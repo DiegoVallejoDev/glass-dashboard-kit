@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/MetricCard";
@@ -44,6 +45,7 @@ interface DashboardProps {
 
 export function Dashboard(props: DashboardProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <>
@@ -51,10 +53,17 @@ export function Dashboard(props: DashboardProps) {
         Skip to dashboard content
       </a>
       <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-indigo-50 to-fuchsia-50" aria-hidden="true" />
-      <div className="flex min-h-[100dvh] w-full flex-col md:flex-row p-3 md:p-5 gap-3 md:gap-4">
-        <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <div className="flex h-dvh w-full flex-col md:flex-row p-3 md:p-5 gap-3 md:gap-4 overflow-hidden">
+        <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} collapsed={collapsed} onCollapsedChange={setCollapsed} />
 
-        <main id="main-content" className="flex-1 flex flex-col min-h-0 gap-3 md:gap-4" tabIndex={-1}>
+        <main
+          id="main-content"
+          className={cn(
+            "flex-1 flex flex-col min-h-0 gap-3 md:gap-4 overflow-y-auto",
+            collapsed ? "md:ml-[calc(5rem+2.25rem)]" : "md:ml-[calc(16rem+2.25rem)]"
+          )}
+          tabIndex={-1}
+        >
           <Header onMenuClick={() => setMobileOpen(true)} />
 
           <section className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">

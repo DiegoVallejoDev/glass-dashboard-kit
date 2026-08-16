@@ -24,13 +24,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   }, []);
 
   useEffect(() => {
+    const scrollContainer = headerRef.current?.parentElement;
+    if (!scrollContainer) return;
     function onScroll() {
       if (active) return;
-      setCondensed(window.scrollY > 12);
+      setCondensed(scrollContainer!.scrollTop > 12);
     }
-    window.addEventListener("scroll", onScroll, { passive: true });
+    scrollContainer.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => scrollContainer.removeEventListener("scroll", onScroll);
   }, [active]);
 
   function expand() {
@@ -39,8 +41,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   function maybeCondense() {
+    const scrollContainer = headerRef.current?.parentElement;
     setActive(false);
-    setCondensed(window.scrollY > 12);
+    setCondensed(scrollContainer ? scrollContainer.scrollTop > 12 : false);
   }
 
   return (
@@ -48,7 +51,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       ref={headerRef}
       id="top-header"
       className={cn(
-        "sticky top-3 md:top-5 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2 bg-white/88 border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 z-20",
+        "sticky top-0 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2 bg-white/88 border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 z-20",
         condensed && "header-condensed"
       )}
       onMouseEnter={expand}

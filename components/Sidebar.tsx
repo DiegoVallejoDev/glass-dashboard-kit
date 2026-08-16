@@ -40,10 +40,11 @@ const navGroups = [
 interface SidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange }: SidebarProps) {
   const [active, setActive] = useState("Dashboard");
   const [profileOpen, setProfileOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -106,7 +107,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <aside
         ref={sidebarRef}
         className={cn(
-          "fixed top-0 left-0 z-40 h-[100dvh] w-64 shrink-0 flex flex-col overflow-hidden border border-white/60 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/50 transition-all duration-200 ease-out md:sticky md:top-5 md:h-[calc(100dvh-2.5rem)] md:translate-x-0 md:rounded-2xl rounded-r-2xl rounded-l-none",
+          "fixed top-0 left-0 z-40 h-[100dvh] w-64 shrink-0 flex flex-col overflow-hidden border border-white/60 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/50 transition-all duration-200 ease-out md:fixed md:top-5 md:left-5 md:h-[calc(100dvh-2.5rem)] md:translate-x-0 md:rounded-2xl rounded-r-2xl rounded-l-none",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed && "md:w-20"
         )}
@@ -139,7 +140,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
               aria-pressed={collapsed}
               onClick={() => {
-                setCollapsed((c) => !c);
+                onCollapsedChange(!collapsed);
                 setProfileOpen(false);
               }}
             >
@@ -202,7 +203,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               aria-expanded={profileOpen}
               onClick={() => {
                 if (collapsed) {
-                  setCollapsed(false);
+                  onCollapsedChange(false);
                   setProfileOpen(true);
                 } else {
                   setProfileOpen((p) => !p);
