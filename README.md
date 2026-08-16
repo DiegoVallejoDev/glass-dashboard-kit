@@ -39,17 +39,17 @@ docs/          # Original standalone HTML proof-of-concept
 ## Getting started
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-- `npm run dev` — Start the dev server with Turbopack
-- `npm run build` — Build and export a static site to `dist/`
-- `npm run lint` — Run ESLint
+- `pnpm dev` — Start the dev server with Turbopack
+- `pnpm build` — Build and export a static site to `dist/`
+- `pnpm lint` — Run ESLint
 
 ## Data sources
 

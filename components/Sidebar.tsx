@@ -138,7 +138,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               className="hidden md:flex p-1.5 rounded-md hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
               aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
               aria-pressed={collapsed}
-              onClick={() => setCollapsed((c) => !c)}
+              onClick={() => {
+                setCollapsed((c) => !c);
+                setProfileOpen(false);
+              }}
             >
               {collapsed ? (
                 <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -174,7 +177,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   type="button"
                   className={cn(
                     "nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] transition-colors text-slate-600",
-                    active === item.label && "bg-blue-50 text-blue-700"
+                    active === item.label && "bg-blue-50 text-blue-700",
+                    collapsed && "md:justify-center"
                   )}
                   aria-current={active === item.label ? "page" : "false"}
                   onClick={() => setActive(item.label)}
@@ -196,7 +200,14 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors text-left"
               aria-haspopup="true"
               aria-expanded={profileOpen}
-              onClick={() => setProfileOpen((p) => !p)}
+              onClick={() => {
+                if (collapsed) {
+                  setCollapsed(false);
+                  setProfileOpen(true);
+                } else {
+                  setProfileOpen((p) => !p);
+                }
+              }}
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-violet-500 shadow-inner shrink-0" />
               <div className={cn("flex flex-col min-w-0", collapsed && "md:hidden")}>

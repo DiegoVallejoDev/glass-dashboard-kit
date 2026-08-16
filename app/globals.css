@@ -166,7 +166,6 @@ header#top-header {
   transition: padding 0.2s ease, gap 0.2s ease, box-shadow 0.2s ease;
 }
 
-header#top-header.header-condensed .header-dot,
 header#top-header.header-condensed .header-tagline,
 header#top-header.header-condensed .header-extra,
 header#top-header.header-condensed #clock {
@@ -180,6 +179,7 @@ header#top-header.header-condensed #clock {
     gap: 0.5rem !important;
   }
 
+  header#top-header.header-condensed .header-dot,
   header#top-header.header-condensed .header-breadcrumb {
     display: none;
   }

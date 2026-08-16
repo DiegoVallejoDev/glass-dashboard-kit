@@ -48,7 +48,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       ref={headerRef}
       id="top-header"
       className={cn(
-        "sticky top-0 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2 bg-white/88 border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 z-20",
+        "sticky top-3 md:top-5 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2 bg-white/88 border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 z-20",
         condensed && "header-condensed"
       )}
       onMouseEnter={expand}
