@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Glass Dashboard Kit
 
-## Getting Started
+A production-ready Next.js port of the **Extended System Telemetry** glassmorphism dashboard concept.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: [Next.js 16](https://nextjs.org) (App Router, static export)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Icons**: [Lucide React](https://lucide.dev)
+- **Charts**: [Chart.js](https://www.chartjs.org) (dynamically imported, client-only)
+- **Fonts**: Inter + Geist Mono via `next/font/google`
+
+## Project structure
+
+```
+app/           # Routes, global styles, layout, and server-side page
+components/    # Reusable React components
+  Dashboard.tsx  # Shell: skip link, sidebar, header, sections
+  Sidebar.tsx    # Collapsible rail / mobile drawer
+  Header.tsx     # Sticky, scroll-condensed header
+  sections.tsx   # All dashboard section cards
+lib/           # Data types, static data, and external API helpers
+  data.ts        # Fetchers for RandomUser, JSONPlaceholder todos & posts
+  utils.ts       # `cn()` Tailwind + clsx/tailwind-merge helper
+docs/          # Original standalone HTML proof-of-concept
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 20+ glassmorphic dashboard components (metrics, process table, hardware toggles, disk usage, top services, charts, team directory, tasks, logs, status controls, deployment pipeline, inventory, media gallery, forms, alerts).
+- Responsive layout with 6-column expansion on ultrawide screens (`min-[1920px]:grid-cols-6`).
+- Accessible sidebar: icon rail on desktop, mobile drawer with focus trap, `Esc` to close, swipe-to-close.
+- Sticky header that condenses on scroll and expands on hover/focus.
+- Sortable process table and real-time clock.
+- Server component fetches placeholder APIs at build time; static data fallback.
+- Static export configured to `dist/`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Getting started
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` — Start the dev server with Turbopack
+- `npm run build` — Build and export a static site to `dist/`
+- `npm run lint` — Run ESLint
 
-## Deploy on Vercel
+## Data sources
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `https://randomuser.me/api/?results=8&seed=telemetry` — team avatars/names
+- `https://jsonplaceholder.typicode.com/todos?_limit=6` — pending tasks
+- `https://jsonplaceholder.typicode.com/posts?_limit=6` — system logs
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Fetched data is cached for 1 hour via `next.revalidate`.
+
+## HTML proof-of-concept
+
+The original single-file prototype lives in `docs/extended-system-telemetry-poc.html`. It was used as the design reference for this Next.js implementation.
+
+## Deployment
+
+The project is configured for static export. After `npm run build`, deploy the contents of `dist/` to any static host, or push the repo and import it into [Vercel](https://vercel.com).
