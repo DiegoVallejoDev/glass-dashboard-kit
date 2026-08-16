@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Extended System Telemetry dashboard prototype" />
+    <title>Extended System Telemetry</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      html,
+      body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      /* Screen-reader only */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+
+      .sr-only.focusable:focus {
+        position: fixed;
+        left: 0.75rem;
+        top: 0.75rem;
+        z-index: 50;
+        width: auto;
+        height: auto;
+        padding: 0.6rem 1rem;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Mobile: turn the process table into stacked cards */
+      @media (max-width: 640px) {
+        .responsive-table thead {
+          display: none;
+        }
+        .responsive-table,
+        .responsive-table tbody,
+        .responsive-table tr,
+        .responsive-table td {
+          display: block;
+          width: 100%;
+        }
+        .responsive-table tr {
+          margin-bottom: 0.75rem;
+          border-radius: 0.75rem;
+          background: rgba(255, 255, 255, 0.55);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          overflow: hidden;
+        }
+        .responsive-table td {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0.75rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .responsive-table td:last-child {
+          border-bottom: none;
+        }
+        .responsive-table td::before {
+          content: attr(data-label);
+          font-weight: 600;
+          color: #64748b;
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+      }
+
+      /* Subtle custom scrollbar for overflowing panels */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 9999px;
+      }
+
+      /* Interactive component utilities */
+      .card-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 25px -5px rgba(226, 232, 240, 0.5), 0 8px 10px -6px rgba(226, 232, 240, 0.5);
+      }
+      .card-hover:active {
+        transform: scale(0.98) translateY(0);
+      }
+
+      .icon-hover {
+        transition: transform 0.2s ease;
+      }
+      .group:hover .icon-hover {
+        transform: scale(1.15) rotate(3deg);
+      }
+      .row-hover {
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+      .row-hover:hover {
+        background-color: rgba(255, 255, 255, 0.5);
+      }
+      .row-hover:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+        background-color: rgba(255, 255, 255, 0.6);
+        border-radius: 0.5rem;
+      }
+
+      /* Reusable frosted-glass card */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(24px) saturate(1.25);
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        border-radius: 1rem;
+        box-shadow: 0 20px 25px -5px rgba(226, 232, 240, 0.5), 0 8px 10px -6px rgba(226, 232, 240, 0.5);
+        padding: 0.75rem;
+      }
+
+      /* Radial progress ring */
+      .radial-progress {
+        position: relative;
+        width: 5rem;
+        height: 5rem;
+        border-radius: 9999px;
+        background: conic-gradient(var(--progress-color, #3b82f6) calc(var(--progress-value, 0) * 1%), rgba(255, 255, 255, 0.5) 0);
+        display: grid;
+        place-items: center;
+      }
+      .radial-progress::before {
+        content: '';
+        position: absolute;
+        inset: 0.5rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+      .radial-progress span {
+        position: relative;
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: #1e293b;
+      }
+
+      /* Toast stack */
+      .toast-stack {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        pointer-events: none;
+      }
+      .toast {
+        pointer-events: auto;
+        transform: translateX(120%);
+        opacity: 0;
+        animation: slideIn 0.3s ease forwards;
+      }
+      @keyframes slideIn {
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes fadeOut {
+        to { opacity: 0; transform: translateY(0.5rem); }
+      }
+      .toast.hiding {
+        animation: fadeOut 0.25s ease forwards;
+      }
+
+      /* Skeleton shimmer */
+      .skeleton {
+        background: linear-gradient(90deg, rgba(148, 163, 184, 0.25) 25%, rgba(226, 232, 240, 0.7) 50%, rgba(148, 163, 184, 0.25) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 0.5rem;
+      }
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      /* Modal */
+      .modal-backdrop {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .modal-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .modal-panel {
+        transform: scale(0.96) translateY(1rem);
+        opacity: 0;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+      .modal-backdrop.open .modal-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+
+      /* Tab panels */
+      .tab-panel[hidden] { display: none; }
+
+      /* Respect reduced-motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
+      /* Premium telemetry visual system */
+      :root {
+        --surface: rgba(255, 255, 255, 0.88);
+        --surface-muted: rgba(248, 250, 252, 0.78);
+        --border: rgba(148, 163, 184, 0.20);
+        --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        --shadow-hover: 0 16px 36px rgba(15, 23, 42, 0.09);
+        --ink: #0f172a;
+        --muted: #64748b;
+        --accent: #2563eb;
+      }
+
+      html {
+        background: #f8fafc;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.09), transparent 34rem),
+          radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.07), transparent 30rem),
+          #f8fafc;
+      }
+
+      .surface-card {
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: var(--shadow) !important;
+        backdrop-filter: blur(16px) saturate(1.08);
+        -webkit-backdrop-filter: blur(16px) saturate(1.08);
+      }
+
+      .glass-card {
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: var(--shadow) !important;
+        border-radius: 0.875rem;
+        backdrop-filter: blur(16px) saturate(1.08);
+        -webkit-backdrop-filter: blur(16px) saturate(1.08);
+      }
+
+      .card-hover {
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      }
+
+      .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover) !important;
+        border-color: rgba(59, 130, 246, 0.18) !important;
+      }
+
+      .card-hover:active {
+        transform: translateY(0) scale(0.995);
+      }
+
+      header.surface-card {
+        position: sticky;
+        top: 0.75rem;
+        z-index: 20;
+      }
+
+      header#top-header {
+        position: sticky !important;
+        top: 0.75rem;
+        z-index: 30;
+      }
+
+      header#top-header.header-condensed {
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+        background: rgba(255, 255, 255, 0.92) !important;
+        box-shadow: 0 10px 15px -3px rgba(226, 232, 240, 0.45), 0 4px 6px -4px rgba(226, 232, 240, 0.25) !important;
+      }
+
+      header#top-header.header-condensed .header-dot,
+      header#top-header.header-condensed .header-tagline,
+      header#top-header.header-condensed .header-extra,
+      header#top-header.header-condensed #clock {
+        display: none;
+      }
+
+      @media (max-width: 640px) {
+        header#top-header.header-condensed {
+          flex-direction: row !important;
+          padding: 0.4rem 0.75rem !important;
+          gap: 0.5rem !important;
+        }
+
+        header#top-header.header-condensed .header-breadcrumb {
+          display: none;
+        }
+
+        header#top-header.header-condensed .header-search {
+          flex: none;
+          min-width: 0;
+        }
+
+        header#top-header.header-condensed .header-search #search {
+          width: min(60vw, 11rem);
+        }
+      }
+
+      .nav-link[aria-current="page"] {
+        box-shadow: inset 3px 0 0 #2563eb;
+        font-weight: 700;
+      }
+
+      .metric-value {
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .data-kicker {
+        color: #64748b;
+        font-size: 0.62rem;
+        line-height: 1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+      }
+
+      .mono-value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      input,
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      input:focus-visible,
+      button:focus-visible,
+      [tabindex="0"]:focus-visible {
+        outline: 2px solid rgba(37, 99, 235, 0.72);
+        outline-offset: 2px;
+      }
+
+      .responsive-table tbody tr {
+        transition: background-color 0.14s ease;
+      }
+
+      .responsive-table tbody tr:hover {
+        background: rgba(241, 245, 249, 0.72) !important;
+      }
+
+      .responsive-table td,
+      .responsive-table th {
+        border-color: rgba(148, 163, 184, 0.14);
+      }
+
+      .progress-track {
+        background: #e2e8f0 !important;
+      }
+
+      .status-chip {
+        border: 1px solid currentColor;
+        border-opacity: 0.10;
+      }
+
+      @media (max-width: 767px) {
+        main > .flex-1.flex.flex-col {
+          flex: none;
+          overflow: visible;
+        }
+
+        header.surface-card {
+          position: relative;
+          top: auto;
+        }
+
+        main {
+          min-width: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .card-hover,
+        .responsive-table tbody tr {
+          transition: none !important;
+        }
+      }
+
+      /* Sidebar icon rail */
+      @media (min-width: 768px) {
+        .sidebar-collapsed {
+          width: 4rem !important;
+        }
+        .sidebar-collapsed .logo-text,
+        .sidebar-collapsed .nav-text,
+        .sidebar-collapsed .nav-section-label,
+        .sidebar-collapsed .profile-text {
+          display: none;
+        }
+        .sidebar-collapsed .nav-link {
+          justify-content: center;
+          padding-left: 0.5rem;
+          padding-right: 0.5rem;
+          gap: 0;
+        }
+        .sidebar-collapsed .nav-link i {
+          width: 1.25rem;
+          height: 1.25rem;
+          margin: 0;
+        }
+        .sidebar-collapsed #profile-btn {
+          justify-content: center;
+          padding-left: 0.5rem;
+          padding-right: 0.5rem;
+        }
+        .sidebar-collapsed #profile-menu {
+          position: fixed;
+          z-index: 9999;
+          top: auto;
+          left: auto;
+          right: auto;
+          bottom: auto;
+          width: 12rem;
+          margin-bottom: 0;
+          margin-left: 0;
+          transform: none;
+        }
+        .sidebar-collapsed [data-tooltip] {
+          position: relative;
+        }
+      }
+
+      #sidebar-tooltip {
+        position: fixed;
+        left: 0;
+        top: 0;
+        padding: 0.35rem 0.6rem;
+        background: rgba(15, 23, 42, 0.92);
+        color: white;
+        font-size: 0.7rem;
+        line-height: 1;
+        border-radius: 0.25rem;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.12s ease;
+        z-index: 9999;
+      }
+      #sidebar-tooltip.visible {
+        opacity: 1;
+      }
+
+      /* Sidebar active link */
+      .nav-link[aria-current="page"] {
+        background: rgba(239, 246, 255, 0.9);
+        color: #1d4ed8;
+        box-shadow: inset 3px 0 0 #2563eb;
+        font-weight: 700;
+      }
+      .nav-link[aria-current="page"] i {
+        color: #2563eb;
+        opacity: 1;
+      }
+      .nav-link[aria-current="page"]:hover {
+        background: rgba(219, 234, 254, 0.95);
+      }
+    </style>
+  </head>
+  <body class="antialiased text-slate-800">
+    <a href="#main-content" class="sr-only focusable">Skip to dashboard content</a>
+
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-indigo-50 to-fuchsia-50 pointer-events-none" aria-hidden="true"></div>
+
+    <div class="flex min-h-[100dvh] w-full flex-col md:flex-row p-3 md:p-5 gap-3 md:gap-4">
+      <div
+        id="sidebar-overlay"
+        class="fixed inset-0 z-30 bg-slate-900/20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"
+        aria-hidden="true"
+        onclick="closeSidebar()"
+      ></div>
+
+      <aside
+        id="sidebar"
+        class="fixed top-0 left-0 z-40 h-[100dvh] w-64 shrink-0 transform -translate-x-full transition-all duration-200 ease-out md:sticky md:top-5 md:h-[calc(100dvh-2.5rem)] md:translate-x-0 flex flex-col bg-white/70 backdrop-blur-xl border border-white/60 rounded-r-2xl rounded-l-none md:rounded-2xl shadow-xl shadow-slate-200/50 overflow-hidden"
+        aria-label="Core network"
+      >
+        <div class="h-14 p-3 border-b border-white/50 bg-white/40 flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 to-violet-500 text-white flex items-center justify-center shadow-sm shrink-0" aria-hidden="true">
+              <i class="fa-solid fa-cube text-xs"></i>
+            </div>
+            <span class="logo-text text-xs font-bold uppercase tracking-widest text-slate-700 truncate">Core Network</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              id="sidebar-toggle"
+              class="hidden md:flex p-1.5 rounded-md hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors"
+              aria-label="Collapse navigation"
+              aria-pressed="false"
+              data-tooltip="Collapse sidebar"
+              onclick="toggleSidebarCollapse()"
+            >
+              <i id="sidebar-toggle-icon" class="fa-solid fa-angles-left w-4 h-4 text-sm text-slate-500 text-center leading-4" aria-hidden="true"></i>
+            </button>
+            <button
+              type="button"
+              id="sidebar-close"
+              class="md:hidden p-1.5 rounded-md hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors"
+              aria-label="Close navigation"
+              onclick="closeSidebar()"
+            >
+              <i class="fa-solid fa-xmark w-4 h-4 text-sm text-slate-500 text-center leading-4" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <nav id="sidebar-nav" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1" aria-label="Primary navigation">
+          <div class="nav-section-label px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Monitor</div>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="page"
+            data-target="section-dashboard"
+            data-tooltip="Dashboard"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-gauge-high w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Dashboard</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-processes"
+            data-tooltip="Processes"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-microchip w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Processes</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-metrics"
+            data-tooltip="Metrics"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-chart-line w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Metrics</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-logs"
+            data-tooltip="Logs"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-file-lines w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Logs</span>
+          </button>
+
+          <div class="nav-section-label px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">System</div>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-status"
+            data-tooltip="Network"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-network-wired w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Network</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-status"
+            data-tooltip="Security"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-shield-halved w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Security</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-team"
+            data-tooltip="Team"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-users w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Team</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-assets"
+            data-tooltip="Assets"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-images w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Assets</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-forms"
+            data-tooltip="Forms"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-pen-to-square w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Forms</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-slate-600"
+            aria-current="false"
+            data-target="section-status"
+            data-tooltip="Settings"
+            onclick="updateNav(this)"
+          >
+            <i class="fa-solid fa-gear w-4 h-4 text-sm opacity-70 text-center leading-4" aria-hidden="true"></i>
+            <span class="nav-text">Settings</span>
+          </button>
+        </nav>
+
+        <div class="relative p-2 border-t border-white/50 bg-white/30">
+          <button
+            type="button"
+            id="profile-btn"
+            class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors text-left"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="profile-menu"
+            data-tooltip="User menu"
+            onclick="toggleProfileMenu()"
+          >
+            <div class="relative shrink-0" aria-hidden="true">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-500 to-violet-500 shadow-inner"></div>
+              <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white"></span>
+            </div>
+            <div class="profile-text flex flex-col min-w-0">
+              <span class="text-[10px] font-bold leading-none text-slate-800 truncate">SYS_ADMIN</span>
+              <span class="text-[9px] text-slate-500 font-mono truncate">ID: 0x4A</span>
+            </div>
+            <i class="fa-solid fa-chevron-down w-3 h-3 ml-auto text-slate-400 text-center leading-3 profile-text" aria-hidden="true"></i>
+          </button>
+
+          <div
+            id="profile-menu"
+            class="hidden absolute left-2 right-2 bottom-full mb-2 bg-white/95 backdrop-blur-xl border border-slate-200/60 rounded-xl shadow-lg shadow-slate-200/50 p-1.5 flex flex-col gap-0.5"
+            role="menu"
+            aria-orientation="vertical"
+            aria-labelledby="profile-btn"
+          >
+            <div class="profile-text px-2 py-1.5 text-[10px] text-slate-500 border-b border-slate-100">Signed in as SYS_ADMIN</div>
+            <button type="button" class="profile-item w-full flex items-center gap-2 px-2 py-1.5 text-xs text-slate-700 rounded-lg hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" role="menuitem" onclick="toast('Opening settings')">
+              <i class="fa-solid fa-user-gear w-4 text-slate-400 text-center" aria-hidden="true"></i> Account settings
+            </button>
+            <button type="button" class="profile-item w-full flex items-center gap-2 px-2 py-1.5 text-xs text-slate-700 rounded-lg hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" role="menuitem" onclick="toast('Help center')">
+              <i class="fa-solid fa-circle-question w-4 text-slate-400 text-center" aria-hidden="true"></i> Help & support
+            </button>
+            <div class="h-px bg-slate-100 my-0.5 profile-text"></div>
+            <button type="button" class="profile-item w-full flex items-center gap-2 px-2 py-1.5 text-xs text-red-600 rounded-lg hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500" role="menuitem" onclick="toast('Logged out')">
+              <i class="fa-solid fa-arrow-right-from-bracket w-4 text-red-400 text-center" aria-hidden="true"></i> Sign out
+            </button>
+          </div>
+        </div>
+      </aside>
+
+
+      <main id="main-content" class="flex-1 flex flex-col min-h-0 gap-3 md:gap-4" tabindex="-1">
+        <h1 class="sr-only">Extended System Telemetry Dashboard</h1>
+
+        <header id="top-header" class="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2 bg-white/88 border border-slate-200/60 rounded-2xl shadow-sm surface-card transition-all duration-200">
+          <div class="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              id="menu-btn"
+              class="md:hidden p-1.5 rounded-md hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors"
+              aria-label="Open navigation"
+              aria-expanded="false"
+              aria-controls="sidebar"
+              onclick="openSidebar()"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            </button>
+
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="header-dot w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500/40" aria-hidden="true"></span>
+                <p class="header-tagline text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">System Telemetry</p>
+              </div>
+              <nav aria-label="Breadcrumb" class="header-breadcrumb mt-0.5 min-w-0">
+                <ol class="flex items-center gap-2 text-xs font-medium">
+                  <li>
+                    <a href="#" class="text-slate-500 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded px-0.5 transition-colors">Cluster Alpha</a>
+                  </li>
+                  <li aria-hidden="true" class="text-slate-300">/</li>
+                  <li class="text-slate-900 font-semibold truncate" aria-current="page">Node Array 01</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span class="header-extra inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50/60 px-1.5 py-0.5 rounded-full" aria-hidden="true">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse motion-reduce:animate-none"></span>
+              Live
+            </span>
+
+            <span id="clock" class="hidden sm:inline-flex items-center text-[10px] font-mono text-slate-500 bg-white/50 px-2 py-1 rounded-md">--:--:--</span>
+
+            <div class="header-search relative flex-1 sm:flex-none min-w-0">
+              <label for="search" class="sr-only">Search active processes</label>
+              <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input
+                id="search"
+                type="search"
+                placeholder="Query resources..."
+                class="w-full sm:w-48 text-xs bg-white/50 border border-white/60 rounded-md pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white placeholder-slate-400 transition-all"
+                aria-controls="process-body"
+                aria-describedby="process-count"
+                oninput="filterRows(this.value)"
+              />
+            </div>
+          </div>
+        </header>
+
+        <section id="section-metrics" class="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Key metrics">
+          <div class="group card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col justify-between min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">CPU Load</span>
+              <svg class="w-3.5 h-3.5 icon-hover text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <div class="metric-value text-xl font-bold text-slate-900">24.2%</div>
+            <div class="progress-track w-full h-1.5 rounded-full mt-2 overflow-hidden" aria-hidden="true">
+              <div class="h-full bg-blue-500 rounded-full" style="width: 24.2%"></div>
+            </div>
+          </div>
+
+          <div class="group card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col justify-between min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Memory</span>
+              <svg class="w-3.5 h-3.5 icon-hover text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+              </svg>
+            </div>
+            <div class="metric-value text-xl font-bold text-slate-900">42.7%</div>
+            <div class="progress-track w-full h-1.5 rounded-full mt-2 overflow-hidden" aria-hidden="true">
+              <div class="h-full bg-violet-500 rounded-full" style="width: 42.7%"></div>
+            </div>
+          </div>
+
+          <div class="group card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col justify-between min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Network</span>
+              <svg class="w-3.5 h-3.5 icon-hover text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="metric-value text-xl font-bold text-slate-900">128 MB/s</div>
+            <div class="progress-track w-full h-1.5 rounded-full mt-2 overflow-hidden" aria-hidden="true">
+              <div class="h-full bg-emerald-500 rounded-full" style="width: 64%"></div>
+            </div>
+          </div>
+
+          <div class="group card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col justify-between min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Uptime</span>
+              <svg class="w-3.5 h-3.5 icon-hover text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="metric-value text-xl font-bold text-slate-900">14d 3h</div>
+            <div class="progress-track w-full h-1.5 rounded-full mt-2 overflow-hidden" aria-hidden="true">
+              <div class="h-full bg-amber-500 rounded-full" style="width: 92%"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="flex-1 flex flex-col lg:flex-row gap-3 md:gap-4 min-h-0 overflow-visible lg:overflow-hidden">
+          <section id="section-processes" class="flex-1 min-h-0 flex flex-col bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card overflow-hidden" aria-labelledby="processes-heading">
+            <div class="px-3 py-2 border-b border-white/50 bg-white/40 flex justify-between items-center">
+              <h2 id="processes-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-600">Active Processes</h2>
+              <span id="process-count" class="text-[10px] font-mono bg-white/50 px-1.5 py-0.5 rounded text-slate-500" aria-live="polite" aria-atomic="true">n=4</span>
+            </div>
+
+            <div class="flex-1 overflow-auto p-1">
+              <table class="w-full text-left border-collapse responsive-table" aria-labelledby="processes-heading">
+                <thead>
+                  <tr class="text-[10px] uppercase tracking-wider text-slate-500 bg-white/30 sticky top-0 backdrop-blur-md">
+                    <th scope="col" class="sort-header px-3 py-2 font-semibold text-left cursor-pointer select-none hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors" tabindex="0" aria-sort="none" data-type="number" data-label="PID" onkeydown="handleSortKey(event, this)" onclick="sortTable(this)">
+                      PID <span class="sort-arrow opacity-60" aria-hidden="true">↕</span>
+                    </th>
+                    <th scope="col" class="sort-header px-3 py-2 font-semibold text-left cursor-pointer select-none hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors" tabindex="0" aria-sort="none" data-label="Command" onkeydown="handleSortKey(event, this)" onclick="sortTable(this)">
+                      Command <span class="sort-arrow opacity-60" aria-hidden="true">↕</span>
+                    </th>
+                    <th scope="col" class="sort-header px-3 py-2 font-semibold text-right cursor-pointer select-none hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors" tabindex="0" aria-sort="none" data-type="number" data-label="CPU" onkeydown="handleSortKey(event, this)" onclick="sortTable(this)">
+                      CPU % <span class="sort-arrow opacity-60" aria-hidden="true">↕</span>
+                    </th>
+                    <th scope="col" class="sort-header px-3 py-2 font-semibold text-right cursor-pointer select-none hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors" tabindex="0" aria-sort="none" data-type="number" data-label="Memory" onkeydown="handleSortKey(event, this)" onclick="sortTable(this)">
+                      MEM % <span class="sort-arrow opacity-60" aria-hidden="true">↕</span>
+                    </th>
+                    <th scope="col" class="px-3 py-2 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="process-body" class="text-xs">
+                  <tr class="border-b border-white/30 hover:bg-white/50 transition-colors group" data-search="1042 docker_daemon 12.4 8.1 running">
+                    <td class="px-3 py-2 font-mono text-slate-600" data-label="PID">1042</td>
+                    <td class="px-3 py-2 font-medium" data-label="Command">docker_daemon</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="CPU %">12.4</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="MEM %">8.1</td>
+                    <td class="px-3 py-2" data-label="Status">
+                      <span class="inline-flex items-center gap-1 text-emerald-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                        <span>Running</span>
+                      </span>
+                    </td>
+                  </tr>
+                  <tr class="border-b border-white/30 hover:bg-white/50 transition-colors group" data-search="2105 postgres_main 45.2 32.4 running">
+                    <td class="px-3 py-2 font-mono text-slate-600" data-label="PID">2105</td>
+                    <td class="px-3 py-2 font-medium" data-label="Command">postgres_main</td>
+                    <td class="px-3 py-2 font-mono text-right text-amber-600 font-semibold" data-label="CPU %">45.2</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="MEM %">32.4</td>
+                    <td class="px-3 py-2" data-label="Status">
+                      <span class="inline-flex items-center gap-1 text-emerald-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                        <span>Running</span>
+                      </span>
+                    </td>
+                  </tr>
+                  <tr class="border-b border-white/30 hover:bg-white/50 transition-colors group" data-search="8841 redis_cache 2.1 94.0 warning">
+                    <td class="px-3 py-2 font-mono text-slate-600" data-label="PID">8841</td>
+                    <td class="px-3 py-2 font-medium" data-label="Command">redis_cache</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="CPU %">2.1</td>
+                    <td class="px-3 py-2 font-mono text-right text-red-600 font-semibold" data-label="MEM %">94.0</td>
+                    <td class="px-3 py-2" data-label="Status">
+                      <span class="inline-flex items-center gap-1 text-amber-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>
+                        <span>Warning</span>
+                      </span>
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-white/50 transition-colors group" data-search="9012 nginx_worker 0.5 1.2 sleep">
+                    <td class="px-3 py-2 font-mono text-slate-600" data-label="PID">9012</td>
+                    <td class="px-3 py-2 font-medium" data-label="Command">nginx_worker</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="CPU %">0.5</td>
+                    <td class="px-3 py-2 font-mono text-right" data-label="MEM %">1.2</td>
+                    <td class="px-3 py-2" data-label="Status">
+                      <span class="inline-flex items-center gap-1 text-slate-600">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true"></span>
+                        <span>Sleep</span>
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div id="no-results" class="hidden text-center py-8 text-xs text-slate-500" role="status">No processes match your query.</div>
+            </div>
+          </section>
+
+          <section class="w-full lg:w-72 shrink-0 flex flex-col gap-3 md:gap-4 min-h-0 overflow-visible lg:overflow-y-auto" aria-labelledby="hardware-heading">
+            <div class="card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3" role="group" aria-labelledby="hardware-heading">
+              <h3 id="hardware-heading" class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Hardware Toggles</h3>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 transition-colors">
+                  <label for="turbo-switch" class="text-xs font-medium text-slate-700 cursor-pointer">Turbo Boost</label>
+                  <button
+                    type="button"
+                    id="turbo-switch"
+                    role="switch"
+                    aria-checked="true"
+                    class="relative w-9 h-5 rounded-full transition-colors duration-200 active:scale-95 bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                    onclick="toggleSwitch(this)"
+                  >
+                    <span class="switch-knob absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-4"></span>
+                  </button>
+                </div>
+
+                <div class="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 transition-colors">
+                  <label for="sleep-switch" class="text-xs font-medium text-slate-700 cursor-pointer">Deep Sleep</label>
+                  <button
+                    type="button"
+                    id="sleep-switch"
+                    role="switch"
+                    aria-checked="false"
+                    class="relative w-9 h-5 rounded-full transition-colors duration-200 active:scale-95 bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                    onclick="toggleSwitch(this)"
+                  >
+                    <span class="switch-knob absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-hover bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 shrink-0" aria-labelledby="alerts-heading">
+              <h3 id="alerts-heading" class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Recent Alerts</h3>
+              <ul class="flex flex-col gap-2" role="list" aria-label="Recent alerts">
+                <li class="flex items-start gap-2 text-xs text-slate-700 p-1.5 rounded-lg hover:bg-white/50 transition-colors focus-within:bg-white/50 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" aria-hidden="true"></span>
+                  <span><strong>Memory pressure</strong> — redis_cache at 94%</span>
+                </li>
+                <li class="flex items-start gap-2 text-xs text-slate-700 p-1.5 rounded-lg hover:bg-white/50 transition-colors focus-within:bg-white/50 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" aria-hidden="true"></span>
+                  <span><strong>High CPU</strong> — postgres_main at 45%</span>
+                </li>
+                <li class="flex items-start gap-2 text-xs text-slate-700 p-1.5 rounded-lg hover:bg-white/50 transition-colors focus-within:bg-white/50 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" aria-hidden="true"></span>
+                  <span><strong>Recovered</strong> — nginx_worker back to sleep</span>
+                </li>
+              </ul>
+            </div>
+
+            <div
+              class="card-hover flex-1 min-h-[12rem] bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col"
+              role="img"
+              aria-label="Thermal distribution bar chart. CPU 30°C, GPU 45°C, Memory 60°C, SSD 85°C, System 70°C, Fan 95°C"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Thermal Distribution</h3>
+                <span class="text-[9px] font-mono bg-white/50 px-1.5 py-0.5 rounded text-slate-500">°C</span>
+              </div>
+              <div class="flex-1 bg-white/40 rounded-lg border border-white/50 relative overflow-hidden flex flex-col p-2">
+                <div class="absolute inset-x-2 inset-y-2 pointer-events-none flex flex-col justify-between opacity-30" aria-hidden="true">
+                  <div class="border-t border-slate-400"></div>
+                  <div class="border-t border-slate-400"></div>
+                  <div class="border-t border-slate-400"></div>
+                  <div class="border-t border-slate-400"></div>
+                </div>
+                <div class="relative flex-1 flex gap-1 min-h-0" aria-hidden="true">
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-blue-400/80 rounded-t-sm transition-all group-hover/bar:bg-blue-500" style="height: 30%" title="CPU: 30 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">CPU</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-blue-500/80 rounded-t-sm transition-all group-hover/bar:bg-blue-600" style="height: 45%" title="GPU: 45 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">GPU</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-blue-500/80 rounded-t-sm transition-all group-hover/bar:bg-blue-600" style="height: 60%" title="Memory: 60 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">Mem</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-violet-500/80 rounded-t-sm transition-all group-hover/bar:bg-violet-600" style="height: 85%" title="SSD: 85 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">SSD</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-amber-500/80 rounded-t-sm transition-all group-hover/bar:bg-amber-600" style="height: 70%" title="System: 70 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">Sys</span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-end gap-1 group/bar">
+                    <div class="relative w-full h-full flex items-end">
+                      <div class="w-full bg-red-500/80 rounded-t-sm transition-all group-hover/bar:bg-red-600" style="height: 95%" title="Fan exhaust: 95 °C"></div>
+                    </div>
+                    <span class="text-[9px] text-slate-500">Fan</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Additional telemetry">
+          <div class="bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col gap-3 card-hover min-[1920px]:col-span-3" aria-labelledby="disk-heading">
+            <div class="flex items-center justify-between">
+              <h3 id="disk-heading" class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Disk Usage</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">3 mounts</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="group/disk flex flex-col gap-1 p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-700">/</span>
+                  <span class="font-mono text-slate-600">142 / 200 GB</span>
+                </div>
+                <div class="w-full h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                  <div class="h-full bg-blue-500 rounded-full transition-all duration-500 group-hover/disk:bg-blue-600" style="width: 71%"></div>
+                </div>
+              </div>
+              <div class="group/disk flex flex-col gap-1 p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-700">/data</span>
+                  <span class="font-mono text-slate-600">450 / 1000 GB</span>
+                </div>
+                <div class="w-full h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                  <div class="h-full bg-violet-500 rounded-full transition-all duration-500 group-hover/disk:bg-violet-600" style="width: 45%"></div>
+                </div>
+              </div>
+              <div class="group/disk flex flex-col gap-1 p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-700">/logs</span>
+                  <span class="font-mono text-slate-600">28 / 120 GB</span>
+                </div>
+                <div class="w-full h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                  <div class="h-full bg-emerald-500 rounded-full transition-all duration-500 group-hover/disk:bg-emerald-600" style="width: 23%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/50 surface-card p-3 flex flex-col gap-3 card-hover min-[1920px]:col-span-3" aria-labelledby="services-heading">
+            <div class="flex items-center justify-between">
+              <h3 id="services-heading" class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Services</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">by CPU</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="group/service flex items-center justify-between p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true"></span>
+                  <span class="text-xs font-medium text-slate-700 truncate">postgres_main</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-24 h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                    <div class="h-full bg-emerald-500 rounded-full transition-all duration-500 group-hover/service:bg-emerald-600" style="width: 45.2%"></div>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-600 w-8 text-right">45%</span>
+                </div>
+              </div>
+              <div class="group/service flex items-center justify-between p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0" aria-hidden="true"></span>
+                  <span class="text-xs font-medium text-slate-700 truncate">docker_daemon</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-24 h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                    <div class="h-full bg-blue-500 rounded-full transition-all duration-500 group-hover/service:bg-blue-600" style="width: 12.4%"></div>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-600 w-8 text-right">12%</span>
+                </div>
+              </div>
+              <div class="group/service flex items-center justify-between p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true"></span>
+                  <span class="text-xs font-medium text-slate-700 truncate">redis_cache</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-24 h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                    <div class="h-full bg-amber-500 rounded-full transition-all duration-500 group-hover/service:bg-amber-600" style="width: 2.1%"></div>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-600 w-8 text-right">2%</span>
+                </div>
+              </div>
+              <div class="group/service flex items-center justify-between p-1.5 rounded-lg row-hover cursor-default" tabindex="0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2 h-2 rounded-full bg-slate-400 shrink-0" aria-hidden="true"></span>
+                  <span class="text-xs font-medium text-slate-700 truncate">nginx_worker</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-24 h-1.5 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+                    <div class="h-full bg-slate-400 rounded-full transition-all duration-500 group-hover/service:bg-slate-500" style="width: 0.5%"></div>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-600 w-8 text-right">0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Data visualization">
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-2">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">CPU History</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">1h</span>
+            </div>
+            <div class="relative flex-1 min-h-[10rem]">
+              <canvas id="cpu-history-chart" aria-label="CPU usage history line chart"></canvas>
+            </div>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-2">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Node Traffic</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">MB/s</span>
+            </div>
+            <div class="relative flex-1 min-h-[10rem]">
+              <canvas id="node-traffic-chart" aria-label="Node network traffic bar chart"></canvas>
+            </div>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-2">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Allocation</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">cores</span>
+            </div>
+            <div class="relative flex-1 min-h-[10rem] flex items-center justify-center">
+              <canvas id="resource-doughnut-chart" aria-label="Resource allocation doughnut chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-team" class="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Team and activity">
+          <div class="glass-card card-hover flex flex-col lg:col-span-2 lg:row-span-2 min-[1920px]:col-span-4 min-[1920px]:row-span-2">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Team Directory</h3>
+              <span id="team-count" class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">loading</span>
+            </div>
+            <div id="team-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div class="skeleton h-16 w-full rounded-lg"></div>
+              <div class="skeleton h-16 w-full rounded-lg"></div>
+              <div class="skeleton h-16 w-full rounded-lg"></div>
+              <div class="skeleton h-16 w-full rounded-lg"></div>
+            </div>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-2">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Activity Timeline</h3>
+            <ul class="flex-1 overflow-auto max-h-[12rem] space-y-3 relative pl-1" aria-label="Activity timeline">
+              <li class="relative pl-4 border-l-2 border-blue-400">
+                <span class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-blue-500" aria-hidden="true"></span>
+                <p class="text-xs font-medium text-slate-700">Deploy v2.4.1</p>
+                <p class="text-[10px] text-slate-500">2 min ago</p>
+              </li>
+              <li class="relative pl-4 border-l-2 border-emerald-400">
+                <span class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                <p class="text-xs font-medium text-slate-700">Backup completed</p>
+                <p class="text-[10px] text-slate-500">1h ago</p>
+              </li>
+              <li class="relative pl-4 border-l-2 border-amber-400">
+                <span class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-amber-500" aria-hidden="true"></span>
+                <p class="text-xs font-medium text-slate-700">Memory alert</p>
+                <p class="text-[10px] text-slate-500">3h ago</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-2">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Recent Logins</h3>
+            <ul id="login-list" class="flex-1 overflow-auto max-h-[12rem] space-y-2" aria-live="polite" aria-atomic="true">
+              <li class="skeleton h-6 w-full rounded"></li>
+              <li class="skeleton h-6 w-full rounded"></li>
+              <li class="skeleton h-6 w-full rounded"></li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="section-logs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Tasks and logs">
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pending Tasks</h3>
+              <span id="todo-count" class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">0</span>
+            </div>
+            <ul id="todo-list" class="flex-1 overflow-auto max-h-[12rem] space-y-1 text-xs">
+              <li class="skeleton h-6 w-full rounded"></li>
+              <li class="skeleton h-6 w-full rounded"></li>
+            </ul>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">System Logs</h3>
+              <span id="log-count" class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">0</span>
+            </div>
+            <ul id="log-list" class="flex-1 overflow-auto max-h-[12rem] space-y-2 font-mono text-[10px]">
+              <li class="skeleton h-8 w-full rounded"></li>
+              <li class="skeleton h-8 w-full rounded"></li>
+            </ul>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Calendar</h3>
+              <span id="calendar-month" class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded"></span>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-0.5 text-center text-[10px]"></div>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">System Notes</h3>
+            <div id="accordion" class="flex flex-col gap-1">
+              <button type="button" class="accordion-btn w-full text-left text-xs font-medium p-1.5 rounded hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] transition-transform" aria-expanded="false" onclick="toggleAccordion(this)">Maintenance window</button>
+              <div class="accordion-panel hidden text-[10px] text-slate-600 px-1.5 pb-1">Scheduled for Sunday 02:00 UTC.</div>
+              <button type="button" class="accordion-btn w-full text-left text-xs font-medium p-1.5 rounded hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] transition-transform" aria-expanded="false" onclick="toggleAccordion(this)">Known issues</button>
+              <div class="accordion-panel hidden text-[10px] text-slate-600 px-1.5 pb-1">Redis memory threshold under review.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-status" class="grid grid-cols-1 md:grid-cols-3 md:grid-rows-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Status and controls">
+          <div class="glass-card card-hover md:col-span-2 min-[1920px]:col-span-4 flex flex-col">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Network Topology</h3>
+            <div class="flex-1 flex items-center justify-center">
+              <svg viewBox="0 0 240 80" class="w-full h-full max-h-32" aria-label="Network topology: master connected to three workers">
+                <circle cx="120" cy="15" r="8" fill="#3b82f6" />
+                <text x="120" y="35" text-anchor="middle" font-size="8" fill="#64748b">master</text>
+                <circle cx="40" cy="65" r="8" fill="#10b981" />
+                <text x="40" y="78" text-anchor="middle" font-size="8" fill="#64748b">node-1</text>
+                <circle cx="120" cy="65" r="8" fill="#8b5cf6" />
+                <text x="120" y="78" text-anchor="middle" font-size="8" fill="#64748b">node-2</text>
+                <circle cx="200" cy="65" r="8" fill="#f59e0b" />
+                <text x="200" y="78" text-anchor="middle" font-size="8" fill="#64748b">node-3</text>
+                <line x1="120" y1="23" x2="40" y2="57" stroke="#94a3b8" stroke-width="1" />
+                <line x1="120" y1="23" x2="120" y2="57" stroke="#94a3b8" stroke-width="1" />
+                <line x1="120" y1="23" x2="200" y2="57" stroke="#94a3b8" stroke-width="1" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass-card card-hover min-[1920px]:col-span-2 flex flex-col items-center justify-center gap-2">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">System Health</h3>
+            <div class="radial-progress" style="--progress-value: 94; --progress-color: #10b981;" role="img" aria-label="Health score 94 percent"><span>94%</span></div>
+          </div>
+
+          <div class="glass-card card-hover md:col-span-2 min-[1920px]:col-span-4 flex flex-col">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Command Palette</h3>
+            <div class="relative mb-2">
+              <i class="fa-solid fa-magnifying-glass absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs" aria-hidden="true"></i>
+              <input type="text" id="command-input" placeholder="Search commands..." class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="filterCommands(this.value)" aria-label="Search commands" />
+            </div>
+            <ul id="command-list" class="flex-1 overflow-auto max-h-[8rem] space-y-1 text-xs">
+              <li class="command-item p-1.5 rounded hover:bg-white/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" tabindex="0" onclick="toast('Command: Restart service')"><i class="fa-solid fa-rotate-right w-4 text-slate-500" aria-hidden="true"></i> Restart service</li>
+              <li class="command-item p-1.5 rounded hover:bg-white/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" tabindex="0" onclick="toast('Command: Purge cache')"><i class="fa-solid fa-broom w-4 text-slate-500" aria-hidden="true"></i> Purge cache</li>
+              <li class="command-item p-1.5 rounded hover:bg-white/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" tabindex="0" onclick="toast('Command: Scale workers')"><i class="fa-solid fa-up-right-and-down-left-from-center w-4 text-slate-500" aria-hidden="true"></i> Scale workers</li>
+              <li class="command-item p-1.5 rounded hover:bg-white/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" tabindex="0" onclick="toast('Command: Generate report')"><i class="fa-solid fa-file-lines w-4 text-slate-500" aria-hidden="true"></i> Generate report</li>
+            </ul>
+          </div>
+
+          <div class="glass-card card-hover min-[1920px]:col-span-2 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Backup</h3>
+              <span id="backup-pct" class="text-[10px] font-mono text-slate-500 bg-white/50 px-1.5 py-0.5 rounded">73%</span>
+            </div>
+            <div class="w-full h-2 bg-white/50 rounded-full overflow-hidden" aria-hidden="true">
+              <div id="backup-bar" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 73%"></div>
+            </div>
+            <button type="button" id="backup-btn" class="w-full py-1 text-[10px] font-medium bg-blue-500 text-white rounded hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="runBackup()">Run backup</button>
+          </div>
+
+          <div class="glass-card card-hover min-[1920px]:col-span-2 flex flex-col justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span>
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Security</h3>
+            </div>
+            <p class="text-xs text-slate-700">Last scan: <span id="scan-status">3 days ago</span></p>
+            <button type="button" class="w-full py-1 text-[10px] font-medium bg-violet-500 text-white rounded hover:bg-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="openModal('security-modal')">Scan now</button>
+          </div>
+
+          <div class="glass-card card-hover min-[1920px]:col-span-2 flex flex-col justify-center gap-2">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Skeleton Loader</h3>
+            <div class="skeleton h-3 w-3/4 rounded"></div>
+            <div class="skeleton h-3 w-1/2 rounded"></div>
+            <div class="skeleton h-16 w-full rounded-lg mt-1"></div>
+          </div>
+
+          <div class="glass-card card-hover min-[1920px]:col-span-2 flex flex-col justify-center gap-2">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Feedback</h3>
+            <button type="button" class="w-full py-1.5 text-xs font-medium bg-emerald-500 text-white rounded hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="toast('Snapshot saved')">Save snapshot</button>
+            <button type="button" class="w-full py-1.5 text-xs font-medium bg-slate-500 text-white rounded hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="openModal('info-modal')">System info</button>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 min-[1920px]:grid-cols-6 gap-3 md:gap-4 shrink-0" aria-label="Pipeline and inventory">
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Deployment Pipeline</h3>
+            <ol class="flex items-center justify-between text-center" aria-label="Deployment steps">
+              <li class="flex-1 flex flex-col items-center gap-1">
+                <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                <span class="text-[10px] text-slate-600">Build</span>
+              </li>
+              <li class="flex-1 h-0.5 bg-emerald-300" aria-hidden="true"></li>
+              <li class="flex-1 flex flex-col items-center gap-1">
+                <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                <span class="text-[10px] text-slate-600">Test</span>
+              </li>
+              <li class="flex-1 h-0.5 bg-emerald-300" aria-hidden="true"></li>
+              <li class="flex-1 flex flex-col items-center gap-1">
+                <span class="w-6 h-6 rounded-full bg-amber-400 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                <span class="text-[10px] text-slate-600">Stage</span>
+              </li>
+              <li class="flex-1 h-0.5 bg-slate-300" aria-hidden="true"></li>
+              <li class="flex-1 flex flex-col items-center gap-1">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-bold">4</span>
+                <span class="text-[10px] text-slate-600">Prod</span>
+              </li>
+            </ol>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col min-[1920px]:col-span-3">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Inventory</h3>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-white/40 rounded-lg p-2 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs"><i class="fa-solid fa-microchip" aria-hidden="true"></i></span>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">32</p>
+                  <p class="text-[10px] text-slate-500">CPU cores</p>
+                </div>
+              </div>
+              <div class="bg-white/40 rounded-lg p-2 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs"><i class="fa-solid fa-memory" aria-hidden="true"></i></span>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">256 GB</p>
+                  <p class="text-[10px] text-slate-500">RAM</p>
+                </div>
+              </div>
+              <div class="bg-white/40 rounded-lg p-2 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i></span>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">12</p>
+                  <p class="text-[10px] text-slate-500">Disk arrays</p>
+                </div>
+              </div>
+              <div class="bg-white/40 rounded-lg p-2 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs"><i class="fa-solid fa-network-wired" aria-hidden="true"></i></span>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">8</p>
+                  <p class="text-[10px] text-slate-500">NICs</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-assets" class="grid grid-cols-1 gap-3 md:gap-4 shrink-0" aria-label="Media gallery">
+          <div class="glass-card card-hover flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Asset Gallery</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Assets</span>
+            </div>
+            <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div class="skeleton h-20 w-full rounded-lg"></div>
+              <div class="skeleton h-20 w-full rounded-lg"></div>
+              <div class="skeleton h-20 w-full rounded-lg"></div>
+              <div class="skeleton h-20 w-full rounded-lg"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-forms" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 shrink-0" aria-label="Forms">
+          <div class="glass-card card-hover flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Report Incident</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Ticket</span>
+            </div>
+            <form id="incident-form" class="flex-1 flex flex-col gap-2.5" novalidate onsubmit="submitIncident(event)">
+              <div class="flex flex-col gap-1">
+                <label for="incident-name" class="text-[10px] font-semibold text-slate-600">Reporter</label>
+                <div class="relative">
+                  <i class="fa-solid fa-user absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" aria-hidden="true"></i>
+                  <input type="text" id="incident-name" name="name" required class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 placeholder:text-slate-400" placeholder="SYS_ADMIN" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="incident-email" class="text-[10px] font-semibold text-slate-600">Email</label>
+                <div class="relative">
+                  <i class="fa-solid fa-envelope absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" aria-hidden="true"></i>
+                  <input type="email" id="incident-email" name="email" required class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 placeholder:text-slate-400" placeholder="admin@core.net" />
+                </div>
+                <span id="incident-email-error" class="text-[10px] text-red-500 hidden" role="alert">Enter a valid email address.</span>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="incident-category" class="text-[10px] font-semibold text-slate-600">Category</label>
+                <div class="relative">
+                  <i class="fa-solid fa-layer-group absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" aria-hidden="true"></i>
+                  <select id="incident-category" name="category" class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
+                    <option value="hardware">Hardware</option>
+                    <option value="software">Software</option>
+                    <option value="network">Network</option>
+                    <option value="security">Security</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-semibold text-slate-600">Priority</span>
+                <div class="flex flex-wrap gap-3" role="radiogroup" aria-label="Priority">
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="radio" name="priority" value="low" class="w-3.5 h-3.5 accent-blue-500 border-slate-300 focus:ring-blue-500" checked />
+                    Low
+                  </label>
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="radio" name="priority" value="medium" class="w-3.5 h-3.5 accent-amber-500 border-slate-300 focus:ring-amber-500" />
+                    Medium
+                  </label>
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="radio" name="priority" value="high" class="w-3.5 h-3.5 accent-red-500 border-slate-300 focus:ring-red-500" />
+                    High
+                  </label>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1 flex-1">
+                <label for="incident-message" class="text-[10px] font-semibold text-slate-600">Details</label>
+                <textarea id="incident-message" name="message" rows="3" class="w-full text-xs bg-white/50 border border-white/60 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 placeholder:text-slate-400 resize-none" placeholder="Describe the incident..."></textarea>
+              </div>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input type="checkbox" id="incident-alert" name="alert" class="w-3.5 h-3.5 rounded accent-blue-500 border-slate-300 focus:ring-blue-500" />
+                Send alert to on-call
+              </label>
+              <div class="flex gap-2 mt-1">
+                <button type="submit" class="flex-1 px-3 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors">Submit</button>
+                <button type="reset" class="px-3 py-1.5 text-xs font-medium bg-white/50 text-slate-700 rounded hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="resetIncidentErrors()">Reset</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="glass-card card-hover flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Node Config</h3>
+              <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Form</span>
+            </div>
+            <form id="config-form" class="flex-1 flex flex-col gap-2.5" novalidate onsubmit="submitConfig(event)">
+              <div class="flex flex-col gap-1">
+                <label for="config-node" class="text-[10px] font-semibold text-slate-600">Node name</label>
+                <div class="relative">
+                  <i class="fa-solid fa-server absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" aria-hidden="true"></i>
+                  <input type="text" id="config-node" name="node" required class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 placeholder:text-slate-400" placeholder="node-04" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="config-role" class="text-[10px] font-semibold text-slate-600">Role</label>
+                <div class="relative">
+                  <i class="fa-solid fa-shapes absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" aria-hidden="true"></i>
+                  <select id="config-role" name="role" class="w-full text-xs bg-white/50 border border-white/60 rounded pl-7 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
+                    <option value="worker">Worker</option>
+                    <option value="master">Master</option>
+                    <option value="proxy">Proxy</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="config-cpu" class="text-[10px] font-semibold text-slate-600">CPU allocation <span id="config-cpu-value" class="font-mono text-slate-500">4</span> cores</label>
+                <input type="range" id="config-cpu" name="cpu" min="1" max="16" value="4" class="w-full accent-blue-500" oninput="updateCpuValue(this.value)" aria-describedby="config-cpu-value" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-semibold text-slate-600">Tags</span>
+                <div class="flex flex-wrap gap-3">
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="checkbox" name="tags" value="gpu" class="w-3.5 h-3.5 rounded accent-blue-500 border-slate-300 focus:ring-blue-500" />
+                    GPU
+                  </label>
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="checkbox" name="tags" value="ssd" class="w-3.5 h-3.5 rounded accent-blue-500 border-slate-300 focus:ring-blue-500" />
+                    SSD
+                  </label>
+                  <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                    <input type="checkbox" name="tags" value="ha" class="w-3.5 h-3.5 rounded accent-blue-500 border-slate-300 focus:ring-blue-500" />
+                    HA
+                  </label>
+                </div>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded-lg bg-white/40 border border-white/50">
+                <label for="config-restart" class="text-xs font-medium text-slate-700 cursor-pointer">Auto-restart</label>
+                <button type="button" id="config-restart" role="switch" aria-checked="false" class="relative w-9 h-5 rounded-full transition-colors duration-200 active:scale-95 bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1" onclick="toggleSwitch(this)">
+                  <span class="switch-knob absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200" aria-hidden="true"></span>
+                </button>
+              </div>
+              <div class="flex gap-2 mt-auto">
+                <button type="submit" class="flex-1 px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors">Save</button>
+                <button type="reset" class="px-3 py-1.5 text-xs font-medium bg-white/50 text-slate-700 rounded hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="resetConfig()">Reset</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div id="security-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-labelledby="security-title" hidden>
+      <div class="modal-panel glass-card w-full max-w-sm p-4">
+        <h2 id="security-title" class="text-sm font-bold text-slate-800 mb-2">Security Scan</h2>
+        <p class="text-xs text-slate-600 mb-4">Scan all nodes for vulnerabilities. This is a demo action.</p>
+        <div id="scan-progress" class="w-full h-2 bg-white/50 rounded-full overflow-hidden mb-4 hidden" aria-hidden="true">
+          <div id="scan-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="px-3 py-1.5 text-xs font-medium rounded hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" onclick="closeModal('security-modal')">Close</button>
+          <button type="button" class="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="startScan()">Start scan</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="info-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-labelledby="info-title" hidden>
+      <div class="modal-panel glass-card w-full max-w-sm p-4">
+        <h2 id="info-title" class="text-sm font-bold text-slate-800 mb-2">Modal Demo</h2>
+        <p class="text-xs text-slate-600 mb-4">This is a sample modal dialog using the glass-card design.</p>
+        <div class="flex justify-end">
+          <button type="button" class="px-3 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98] transition-colors" onclick="closeModal('info-modal')">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      const menuBtn = document.getElementById('menu-btn');
+      const sidebarClose = document.getElementById('sidebar-close');
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+      const profileBtn = document.getElementById('profile-btn');
+      const profileMenu = document.getElementById('profile-menu');
+      let profileMenuParent = profileMenu.parentElement;
+      const clock = document.getElementById('clock');
+
+      let sidebarOpen = false;
+      let listenersAttached = false;
+      let sidebarCollapsed = false;
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      function isMobile() {
+        return window.matchMedia('(max-width: 767px)').matches;
+      }
+
+      function announce(message) {
+        const announcer = document.getElementById('a11y-announcer');
+        if (!announcer) return;
+        announcer.textContent = '';
+        setTimeout(() => {
+          announcer.textContent = message;
+        }, 100);
+      }
+
+      function attachSidebarListeners() {
+        if (listenersAttached) return;
+        document.addEventListener('keydown', closeSidebarOnEsc);
+        sidebar.addEventListener('keydown', trapFocus);
+        sidebar.addEventListener('touchstart', handleTouchStart);
+        sidebar.addEventListener('touchmove', handleTouchMove);
+        listenersAttached = true;
+      }
+
+      function detachSidebarListeners() {
+        if (!listenersAttached) return;
+        document.removeEventListener('keydown', closeSidebarOnEsc);
+        sidebar.removeEventListener('keydown', trapFocus);
+        sidebar.removeEventListener('touchstart', handleTouchStart);
+        sidebar.removeEventListener('touchmove', handleTouchMove);
+        listenersAttached = false;
+      }
+
+      function applySidebarState() {
+        if (isMobile()) {
+          if (sidebarOpen) {
+            sidebar.classList.add('translate-x-0');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100', 'pointer-events-auto');
+            sidebar.setAttribute('aria-hidden', 'false');
+            sidebar.setAttribute('role', 'dialog');
+            sidebar.setAttribute('aria-modal', 'true');
+            sidebar.inert = false;
+            attachSidebarListeners();
+          } else {
+            sidebar.classList.remove('translate-x-0');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100', 'pointer-events-auto');
+            sidebar.setAttribute('aria-hidden', 'true');
+            sidebar.removeAttribute('role');
+            sidebar.removeAttribute('aria-modal');
+            sidebar.inert = true;
+            detachSidebarListeners();
+          }
+        } else {
+          sidebar.classList.remove('translate-x-0');
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+          overlay.classList.remove('opacity-100', 'pointer-events-auto');
+          sidebar.setAttribute('aria-hidden', 'false');
+          sidebar.removeAttribute('role');
+          sidebar.removeAttribute('aria-modal');
+          sidebar.inert = false;
+          detachSidebarListeners();
+        }
+      }
+
+      function openSidebar() {
+        sidebarOpen = true;
+        applySidebarState();
+        menuBtn.setAttribute('aria-expanded', 'true');
+        const first = sidebar.querySelector('.nav-link');
+        if (first) {
+          setTimeout(() => first.focus(), 0);
+        }
+      }
+
+      function closeSidebar() {
+        sidebarOpen = false;
+        applySidebarState();
+        menuBtn.setAttribute('aria-expanded', 'false');
+        if (document.activeElement && sidebar.contains(document.activeElement)) {
+          menuBtn.focus();
+        }
+      }
+
+      function closeSidebarOnEsc(e) {
+        if (e.key === 'Escape') closeSidebar();
+      }
+
+      function trapFocus(e) {
+        if (e.key !== 'Tab') return;
+        const focusables = Array.from(
+          sidebar.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        ).filter((el) => !el.disabled && el.offsetParent !== null);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+
+      function setActiveNav(target) {
+        const links = document.querySelectorAll('.nav-link');
+        links.forEach((link) => {
+          link.setAttribute('aria-current', 'false');
+          link.classList.remove('bg-blue-50/90', 'text-blue-700');
+          link.classList.add('text-slate-600');
+          const icon = link.querySelector('i');
+          if (icon) {
+            icon.classList.remove('text-blue-600');
+            icon.classList.add('opacity-70');
+          }
+        });
+        target.setAttribute('aria-current', 'page');
+        target.classList.add('bg-blue-50/90', 'text-blue-700');
+        target.classList.remove('text-slate-600');
+        const activeIcon = target.querySelector('i');
+        if (activeIcon) {
+          activeIcon.classList.add('text-blue-600');
+          activeIcon.classList.remove('opacity-70');
+        }
+      }
+
+      function updateNav(target) {
+        setActiveNav(target);
+        const targetId = target.getAttribute('data-target');
+        if (targetId === 'section-dashboard') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (targetId) {
+          const el = document.getElementById(targetId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (isMobile()) closeSidebar();
+      }
+
+      function toggleSidebarCollapse() {
+        sidebarCollapsed = !sidebarCollapsed;
+        applySidebarCollapsed();
+      }
+
+      function applySidebarCollapsed() {
+        if (sidebarCollapsed) {
+          sidebar.classList.add('sidebar-collapsed');
+          if (sidebarToggle) {
+            sidebarToggle.setAttribute('aria-pressed', 'true');
+            sidebarToggle.setAttribute('aria-label', 'Expand navigation');
+            sidebarToggle.setAttribute('data-tooltip', 'Expand sidebar');
+          }
+          if (sidebarToggleIcon) {
+            sidebarToggleIcon.classList.remove('fa-angles-left');
+            sidebarToggleIcon.classList.add('fa-angles-right');
+          }
+        } else {
+          sidebar.classList.remove('sidebar-collapsed');
+          if (sidebarToggle) {
+            sidebarToggle.setAttribute('aria-pressed', 'false');
+            sidebarToggle.setAttribute('aria-label', 'Collapse navigation');
+            sidebarToggle.setAttribute('data-tooltip', 'Collapse sidebar');
+          }
+          if (sidebarToggleIcon) {
+            sidebarToggleIcon.classList.remove('fa-angles-right');
+            sidebarToggleIcon.classList.add('fa-angles-left');
+          }
+        }
+        try {
+          localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+        } catch (e) {}
+      }
+
+      function positionProfileMenu() {
+        const btnRect = profileBtn.getBoundingClientRect();
+        // Set base fixed layout first so width is known before measuring.
+        profileMenu.style.position = 'fixed';
+        profileMenu.style.right = 'auto';
+        profileMenu.style.bottom = 'auto';
+        profileMenu.style.width = '12rem';
+        profileMenu.style.marginBottom = '0';
+        const menuRect = profileMenu.getBoundingClientRect();
+        const padding = 8;
+        let top, left;
+        if (sidebar.classList.contains('sidebar-collapsed')) {
+          top = btnRect.top + btnRect.height / 2 - menuRect.height / 2;
+          left = btnRect.right + padding;
+          if (left + menuRect.width > window.innerWidth) {
+            left = btnRect.left - menuRect.width - padding;
+          }
+        } else {
+          top = btnRect.top - menuRect.height - padding;
+          left = btnRect.left;
+          if (left + menuRect.width > window.innerWidth) {
+            left = window.innerWidth - menuRect.width - padding;
+          }
+          if (top < padding) {
+            top = btnRect.bottom + padding;
+          }
+        }
+        if (top < padding) top = padding;
+        if (top + menuRect.height > window.innerHeight) {
+          top = window.innerHeight - menuRect.height - padding;
+        }
+        profileMenu.style.top = `${top}px`;
+        profileMenu.style.left = `${left}px`;
+      }
+
+      function toggleProfileMenu() {
+        const isOpen = !profileMenu.classList.contains('hidden');
+        if (isOpen) {
+          closeProfileMenu();
+        } else {
+          if (profileMenuParent) profileMenuParent.removeChild(profileMenu);
+          document.body.appendChild(profileMenu);
+          profileMenu.classList.remove('hidden');
+          profileBtn.setAttribute('aria-expanded', 'true');
+          setTimeout(() => {
+            positionProfileMenu();
+            const first = profileMenu.querySelector('[role="menuitem"]');
+            if (first) first.focus({ preventScroll: true });
+          }, 0);
+        }
+      }
+
+      function closeProfileMenu() {
+        if (!profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+          profileBtn.setAttribute('aria-expanded', 'false');
+          profileMenu.style.position = '';
+          profileMenu.style.top = '';
+          profileMenu.style.left = '';
+          profileMenu.style.right = '';
+          profileMenu.style.bottom = '';
+          profileMenu.style.width = '';
+          profileMenu.style.marginBottom = '';
+          if (profileMenuParent && profileMenu.parentNode !== profileMenuParent) {
+            profileMenuParent.appendChild(profileMenu);
+          }
+        }
+      }
+
+      function closeProfileOnClickOutside(e) {
+        if (!profileMenu.classList.contains('hidden') && !profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+          closeProfileMenu();
+        }
+      }
+
+      function closeProfileOnEsc(e) {
+        if (e.key === 'Escape' && !profileMenu.classList.contains('hidden')) {
+          closeProfileMenu();
+          if (profileBtn) profileBtn.focus();
+        }
+      }
+
+      function handleTouchStart(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      }
+
+      function handleTouchMove(e) {
+        if (!isMobile() || !sidebarOpen) return;
+        const touchX = e.changedTouches[0].screenX;
+        const touchY = e.changedTouches[0].screenY;
+        const deltaX = touchStartX - touchX;
+        const deltaY = Math.abs(touchStartY - touchY);
+        if (deltaX > 80 && deltaY < 80) {
+          closeSidebar();
+        }
+      }
+
+      function setSidebarAriaLabels() {
+        sidebar.querySelectorAll('[data-tooltip]').forEach((el) => {
+          const text = el.getAttribute('data-tooltip');
+          if (text) el.setAttribute('aria-label', text);
+        });
+      }
+
+      function initSidebarTooltips() {
+        const tip = document.createElement('div');
+        tip.id = 'sidebar-tooltip';
+        document.body.appendChild(tip);
+
+        sidebar.querySelectorAll('[data-tooltip]').forEach((el) => {
+          const show = () => {
+            const text = el.getAttribute('data-tooltip');
+            if (!text) return;
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 || rect.right <= 0) return;
+            tip.textContent = text;
+            tip.classList.add('visible');
+            const tipRect = tip.getBoundingClientRect();
+            const padding = 8;
+            let left = rect.right + padding;
+            let top = rect.top + rect.height / 2 - tipRect.height / 2;
+            if (left + tipRect.width > window.innerWidth) {
+              left = rect.left - tipRect.width - padding;
+            }
+            if (top < 0) top = 0;
+            tip.style.left = `${left}px`;
+            tip.style.top = `${top}px`;
+          };
+          const hide = () => tip.classList.remove('visible');
+          el.addEventListener('mouseenter', show);
+          el.addEventListener('focus', show);
+          el.addEventListener('mouseleave', hide);
+          el.addEventListener('blur', hide);
+        });
+      }
+
+      function setToggleState(btn, isChecked) {
+        btn.setAttribute('aria-checked', String(isChecked));
+        const knob = btn.querySelector('.switch-knob');
+        if (isChecked) {
+          btn.classList.remove('bg-slate-300');
+          btn.classList.add('bg-blue-500');
+          if (knob) knob.classList.add('translate-x-4');
+        } else {
+          btn.classList.remove('bg-blue-500');
+          btn.classList.add('bg-slate-300');
+          if (knob) knob.classList.remove('translate-x-4');
+        }
+      }
+
+      function toggleSwitch(btn) {
+        const currentState = btn.getAttribute('aria-checked') === 'true';
+        const newState = !currentState;
+        setToggleState(btn, newState);
+        const label = document.querySelector(`label[for="${btn.id}"]`);
+        const labelText = label ? label.textContent : 'Toggle';
+        announce(`${labelText} turned ${newState ? 'on' : 'off'}`);
+      }
+
+      function filterRows(value) {
+        const rows = document.querySelectorAll('#process-body tr');
+        const query = value.trim().toLowerCase();
+        let visible = 0;
+        rows.forEach((row) => {
+          const haystack = (row.getAttribute('data-search') || '').toLowerCase();
+          const match = !query || haystack.includes(query);
+          row.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        const total = rows.length;
+        document.getElementById('process-count').textContent = `n=${visible}`;
+        const noResults = document.getElementById('no-results');
+        if (noResults) noResults.classList.toggle('hidden', visible > 0 || total === 0);
+        announce(`Showing ${visible} of ${total} processes`);
+      }
+
+      function handleSortKey(e, th) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          sortTable(th);
+        }
+      }
+
+      function sortTable(th) {
+        const colIndex = th.cellIndex;
+        const type = th.getAttribute('data-type') || 'string';
+        const tbody = document.getElementById('process-body');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Reset other sort headers
+        th.parentElement.querySelectorAll('th.sort-header').forEach((header) => {
+          if (header !== th) {
+            header.setAttribute('aria-sort', 'none');
+            const arrow = header.querySelector('.sort-arrow');
+            if (arrow) arrow.textContent = '↕';
+          }
+        });
+
+        const current = th.getAttribute('aria-sort') || 'none';
+        const next = current === 'ascending' ? 'descending' : 'ascending';
+        th.setAttribute('aria-sort', next);
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = next === 'ascending' ? '▲' : '▼';
+
+        rows.sort((a, b) => {
+          const aHidden = a.style.display === 'none';
+          const bHidden = b.style.display === 'none';
+          if (aHidden && !bHidden) return 1;
+          if (!aHidden && bHidden) return -1;
+          const aText = a.children[colIndex].textContent.trim();
+          const bText = b.children[colIndex].textContent.trim();
+          let comparison = 0;
+          if (type === 'number') {
+            comparison = parseFloat(aText) - parseFloat(bText);
+          } else {
+            comparison = aText.localeCompare(bText);
+          }
+          return next === 'ascending' ? comparison : -comparison;
+        });
+
+        rows.forEach((row) => tbody.appendChild(row));
+        const label = th.getAttribute('data-label') || th.textContent.trim();
+        announce(`Processes sorted by ${label}, ${next}`);
+      }
+
+      function tickClock() {
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        clock.textContent = time;
+        clock.setAttribute('aria-label', `Current time, ${time}`);
+      }
+
+      // --- Component showcase helpers ---
+
+      function initCharts() {
+        if (typeof Chart === 'undefined') return;
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.4)';
+        const gridColor = 'rgba(148,163,184,0.15)';
+
+        new Chart(document.getElementById('cpu-history-chart'), {
+          type: 'line',
+          data: {
+            labels: ['10:00','10:10','10:20','10:30','10:40','10:50','11:00'],
+            datasets: [{ label: 'CPU %', data: [22,24,28,31,27,25,24.2], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 3 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor }, beginAtZero: true, max: 60 }, x: { grid: { display: false } } } }
+        });
+
+        new Chart(document.getElementById('node-traffic-chart'), {
+          type: 'bar',
+          data: { labels: ['α','β','γ','δ'], datasets: [{ data: [120,95,140,85], backgroundColor: ['#3b82f6','#8b5cf6','#10b981','#f59e0b'], borderRadius: 4 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { display: false } } } }
+        });
+
+        new Chart(document.getElementById('resource-doughnut-chart'), {
+          type: 'doughnut',
+          data: { labels: ['Compute','Storage','Network','Idle'], datasets: [{ data: [45,25,15,15], backgroundColor: ['#3b82f6','#8b5cf6','#10b981','#cbd5e1'], borderWidth: 0 }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        });
+      }
+
+      async function fetchJson(url, fallback) {
+        try {
+          const res = await fetch(url, { mode: 'cors' });
+          if (!res.ok) throw new Error('Bad response');
+          return await res.json();
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function renderTeam(users) {
+        const grid = document.getElementById('team-grid');
+        const count = document.getElementById('team-count');
+        if (!grid) return;
+        grid.innerHTML = '';
+        users.forEach((u) => {
+          const div = document.createElement('div');
+          div.className = 'flex items-center gap-2 p-2 rounded-lg bg-white/40 hover:bg-white/60 transition-colors cursor-default row-hover';
+          div.setAttribute('tabindex', '0');
+          const imgSrc = u.avatar || '';
+          const fallbackInitial = (u.name || '?').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
+          const imgHtml = imgSrc
+            ? `<img src="${imgSrc}" alt="" class="w-8 h-8 rounded-full bg-slate-200 object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+            : '';
+          div.innerHTML = `
+            <div class="relative w-8 h-8 shrink-0">
+              ${imgHtml}
+              <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold items-center justify-center ${imgSrc ? 'hidden' : 'flex'}" aria-hidden="true">${fallbackInitial}</span>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] font-bold text-slate-700 truncate">${u.name}</p>
+              <p class="text-[9px] text-slate-500 truncate">${u.role}</p>
+            </div>
+          `;
+          grid.appendChild(div);
+        });
+        if (count) count.textContent = `${users.length} members`;
+      }
+
+      async function loadTeam() {
+        const fallback = [
+          { name: 'Alex Chen', role: 'Admin' },
+          { name: 'Jordan Smith', role: 'Engineer' },
+          { name: 'Taylor Doe', role: 'Engineer' },
+          { name: 'Morgan Lee', role: 'SRE' },
+          { name: 'Casey Kim', role: 'Engineer' },
+          { name: 'Riley Patel', role: 'DevOps' },
+          { name: 'Quinn Brown', role: 'Security' },
+          { name: 'Avery Wilson', role: 'Engineer' }
+        ];
+        const data = await fetchJson('https://randomuser.me/api/?results=8&seed=telemetry', { results: [] });
+        const users = Array.isArray(data.results)
+          ? data.results.map((u, i) => ({ name: `${u.name.first} ${u.name.last}`, avatar: u.picture.thumbnail, role: i === 0 ? 'Admin' : 'Engineer' }))
+          : fallback;
+        renderTeam(users.length ? users : fallback);
+        renderLogins(users.slice(0, 5));
+      }
+
+      function renderLogins(users) {
+        const list = document.getElementById('login-list');
+        const times = ['now', '5m ago', '12m ago', '1h ago', '3h ago'];
+        if (!list) return;
+        list.innerHTML = '';
+        users.forEach((u, i) => {
+          const li = document.createElement('li');
+          li.className = 'flex items-center justify-between gap-2 text-xs p-1.5 rounded-lg hover:bg-white/50 transition-colors';
+          li.innerHTML = `<span class="truncate">${u.name}</span><span class="shrink-0 text-[10px] text-slate-500 font-mono">${times[i] || 'recent'}</span>`;
+          list.appendChild(li);
+        });
+      }
+
+      function renderTodos(todos) {
+        const list = document.getElementById('todo-list');
+        const count = document.getElementById('todo-count');
+        if (!list) return;
+        list.innerHTML = '';
+        const pending = todos.filter(t => !t.completed).length;
+        todos.slice(0, 8).forEach((t) => {
+          const li = document.createElement('li');
+          li.className = 'flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/50 transition-colors';
+          li.innerHTML = `
+            <input type="checkbox" id="todo-${t.id}" ${t.completed ? 'checked' : ''} class="w-3.5 h-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" onchange="toggleTodo(this)">
+            <label for="todo-${t.id}" class="text-xs text-slate-700 ${t.completed ? 'line-through text-slate-400' : ''}">${t.title || t.text}</label>
+          `;
+          list.appendChild(li);
+        });
+        if (count) count.textContent = `${pending} left`;
+      }
+
+      function toggleTodo(box) {
+        const label = box.nextElementSibling;
+        label.classList.toggle('line-through', box.checked);
+        label.classList.toggle('text-slate-400', box.checked);
+        label.classList.toggle('text-slate-700', !box.checked);
+      }
+
+      async function loadTodos() {
+        const fallback = [
+          { id: 1, title: 'Patch postgres_main', completed: false },
+          { id: 2, title: 'Rotate redis logs', completed: true },
+          { id: 3, title: 'Review nginx config', completed: false },
+          { id: 4, title: 'Update SSL certs', completed: false }
+        ];
+        const data = await fetchJson('https://jsonplaceholder.typicode.com/todos?_limit=6', fallback);
+        renderTodos(Array.isArray(data) ? data : fallback);
+      }
+
+      function renderLogs(logs) {
+        const list = document.getElementById('log-list');
+        const count = document.getElementById('log-count');
+        if (!list) return;
+        list.innerHTML = '';
+        const levels = ['INFO', 'WARN', 'ERROR', 'INFO', 'DEBUG'];
+        const colors = { INFO: 'text-blue-600', WARN: 'text-amber-600', ERROR: 'text-red-600', DEBUG: 'text-slate-500' };
+        logs.slice(0, 6).forEach((post, i) => {
+          const level = levels[i % levels.length];
+          const li = document.createElement('li');
+          li.className = 'p-1.5 rounded-lg hover:bg-white/50 transition-colors text-[10px]';
+          li.innerHTML = `<span class="font-bold ${colors[level]}">[${level}]</span> ${(post.title || post.message || 'Event').substring(0, 60)}`;
+          list.appendChild(li);
+        });
+        if (count) count.textContent = `${logs.length} entries`;
+      }
+
+      async function loadLogs() {
+        const fallback = [
+          { title: 'Memory pressure detected on redis_cache' },
+          { title: 'Backup job completed successfully' },
+          { title: 'nginx_worker health check passed' },
+          { title: 'docker_daemon restarted after update' },
+          { title: 'postgres_main vacuum finished' }
+        ];
+        const data = await fetchJson('https://jsonplaceholder.typicode.com/posts?_limit=6', fallback);
+        renderLogs(Array.isArray(data) ? data : fallback);
+      }
+
+      function renderCalendar() {
+        const monthEl = document.getElementById('calendar-month');
+        const grid = document.getElementById('calendar-grid');
+        if (!grid) return;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        if (monthEl) monthEl.textContent = now.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        grid.innerHTML = '';
+        ['S','M','T','W','T','F','S'].forEach((d) => {
+          const cell = document.createElement('div');
+          cell.className = 'text-slate-400 font-medium';
+          cell.textContent = d;
+          grid.appendChild(cell);
+        });
+        for (let i = 0; i < firstDay; i++) {
+          grid.appendChild(document.createElement('div'));
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+          const cell = document.createElement('div');
+          const isToday = d === now.getDate();
+          cell.className = `p-1 rounded-full ${isToday ? 'bg-blue-500 text-white font-bold' : 'text-slate-600 hover:bg-white/40'} cursor-default`;
+          cell.textContent = d;
+          grid.appendChild(cell);
+        }
+      }
+
+      function loadGallery() {
+        const grid = document.getElementById('gallery-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 1; i <= 4; i++) {
+          const div = document.createElement('div');
+          div.className = 'relative aspect-video rounded-lg overflow-hidden bg-slate-200';
+          div.innerHTML = `<img src="https://picsum.photos/seed/telemetry${i}/400/220" alt="Asset ${i}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<span class=\\'absolute inset-0 flex items-center justify-center text-xs text-slate-500\\'>Asset ${i}</span>'">`;
+          grid.appendChild(div);
+        }
+      }
+
+      function openModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.removeAttribute('hidden');
+        modal.classList.add('open');
+        const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable) setTimeout(() => focusable.focus(), 0);
+      }
+
+      function closeModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.remove('open');
+        setTimeout(() => modal.setAttribute('hidden', ''), 200);
+      }
+
+      function startScan() {
+        const bar = document.getElementById('scan-bar');
+        const progress = document.getElementById('scan-progress');
+        const status = document.getElementById('scan-status');
+        if (!bar) return;
+        progress.classList.remove('hidden');
+        bar.style.width = '0%';
+        setTimeout(() => { bar.style.width = '60%'; }, 50);
+        setTimeout(() => { bar.style.width = '100%'; }, 800);
+        setTimeout(() => {
+          closeModal('security-modal');
+          if (status) { status.textContent = 'just now'; }
+          progress.classList.add('hidden');
+          toast('Security scan complete');
+        }, 1600);
+      }
+
+      function runBackup() {
+        const bar = document.getElementById('backup-bar');
+        const pct = document.getElementById('backup-pct');
+        const btn = document.getElementById('backup-btn');
+        if (!bar) return;
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+        let p = 0;
+        const interval = setInterval(() => {
+          p += 5;
+          bar.style.width = p + '%';
+          if (pct) pct.textContent = p + '%';
+          if (p >= 100) {
+            clearInterval(interval);
+            btn.textContent = 'Done';
+            toast('Backup completed');
+            setTimeout(() => { btn.disabled = false; btn.textContent = 'Run backup'; bar.style.width = '73%'; if (pct) pct.textContent = '73%'; }, 2000);
+          }
+        }, 100);
+      }
+
+      function toast(message) {
+        const stack = document.getElementById('toast-stack');
+        if (!stack) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast glass-card text-xs font-medium text-slate-700 px-3 py-2 flex items-center gap-2';
+        toast.setAttribute('role', 'status');
+        toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span>${message}`;
+        stack.appendChild(toast);
+        setTimeout(() => { toast.classList.add('hiding'); toast.addEventListener('animationend', () => toast.remove()); }, 3000);
+      }
+
+      function updateCpuValue(value) {
+        const display = document.getElementById('config-cpu-value');
+        if (display) display.textContent = value;
+      }
+
+      function resetIncidentErrors() {
+        const error = document.getElementById('incident-email-error');
+        const email = document.getElementById('incident-email');
+        if (error) error.classList.add('hidden');
+        if (email) {
+          email.setAttribute('aria-invalid', 'false');
+          email.classList.remove('border-red-400');
+        }
+      }
+
+      function submitIncident(event) {
+        event.preventDefault();
+        const form = event.target;
+        const email = form.elements['email'];
+        const error = document.getElementById('incident-email-error');
+        const valid = email.value.includes('@') && email.value.includes('.');
+        if (!valid) {
+          email.setAttribute('aria-invalid', 'true');
+          email.classList.add('border-red-400');
+          if (error) error.classList.remove('hidden');
+          email.focus();
+          announce('Please enter a valid email address.');
+          return;
+        }
+        resetIncidentErrors();
+        const category = form.elements['category'].value;
+        const priority = form.elements['priority'].value;
+        const sendAlert = form.elements['alert'].checked;
+        toast(`Incident reported: ${category} (${priority})${sendAlert ? ' — alert sent' : ''}`);
+        announce('Incident submitted successfully.');
+        form.reset();
+      }
+
+      function resetConfig() {
+        updateCpuValue(4);
+        const restart = document.getElementById('config-restart');
+        if (restart) setToggleState(restart, false);
+      }
+
+      function submitConfig(event) {
+        event.preventDefault();
+        const form = event.target;
+        const node = form.elements['node'].value.trim();
+        if (!node) {
+          form.elements['node'].focus();
+          announce('Node name is required.');
+          return;
+        }
+        const role = form.elements['role'].value;
+        const cpu = form.elements['cpu'].value;
+        const tags = Array.from(form.querySelectorAll('input[name="tags"]:checked')).map((cb) => cb.value).join(', ') || 'none';
+        const restart = document.getElementById('config-restart');
+        const restartState = restart ? restart.getAttribute('aria-checked') === 'true' : false;
+        toast(`Saved ${node} as ${role} (${cpu} cores). Tags: ${tags}. Auto-restart ${restartState ? 'on' : 'off'}.`);
+        announce('Node configuration saved.');
+        form.reset();
+        resetConfig();
+      }
+
+      function filterCommands(value) {
+        const items = document.querySelectorAll('#command-list .command-item');
+        const query = value.trim().toLowerCase();
+        items.forEach((item) => {
+          item.classList.toggle('hidden', !item.textContent.toLowerCase().includes(query));
+        });
+      }
+
+      function toggleAccordion(btn) {
+        const panel = btn.nextElementSibling;
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.classList.toggle('hidden', expanded);
+      }
+
+      function initCondensedHeader() {
+        const topHeader = document.getElementById('top-header');
+        if (!topHeader) return;
+
+        let active = false;
+
+        function condense() {
+          if (active) return;
+          topHeader.classList.toggle('header-condensed', window.scrollY > 12);
+        }
+
+        function expand() {
+          active = true;
+          topHeader.classList.remove('header-condensed');
+        }
+
+        function maybeCondense() {
+          active = false;
+          condense();
+        }
+
+        window.addEventListener('scroll', condense, { passive: true });
+        topHeader.addEventListener('mouseenter', expand);
+        topHeader.addEventListener('mouseleave', maybeCondense);
+        topHeader.addEventListener('focusin', expand);
+        topHeader.addEventListener('focusout', (e) => {
+          if (!topHeader.contains(e.relatedTarget)) {
+            maybeCondense();
+          }
+        });
+
+        condense();
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // Initialize active nav
+        const active = sidebar.querySelector('.nav-link[aria-current="page"]');
+        if (active) setActiveNav(active);
+
+        // Initialize toggles
+        document.querySelectorAll('[role="switch"]').forEach((toggle) => {
+          setToggleState(toggle, toggle.getAttribute('aria-checked') === 'true');
+        });
+
+        // Initial sidebar state
+        const savedCollapsed = localStorage.getItem('sidebarCollapsed');
+        sidebarCollapsed = savedCollapsed === 'true';
+        setSidebarAriaLabels();
+        initSidebarTooltips();
+        applySidebarCollapsed();
+        applySidebarState();
+
+        // Clock
+        tickClock();
+        setInterval(tickClock, 1000);
+
+        // Resize handling
+        window.addEventListener('resize', () => {
+          applySidebarState();
+          applySidebarCollapsed();
+        });
+
+        // Sticky condensed header
+        initCondensedHeader();
+
+        // Showcase components
+        initCharts();
+        renderCalendar();
+        loadTeam();
+        loadTodos();
+        loadLogs();
+        loadGallery();
+
+        // Profile menu outside click / escape
+        document.addEventListener('click', closeProfileOnClickOutside);
+        document.addEventListener('keydown', closeProfileOnEsc);
+
+        // Close modals on Escape and backdrop click
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            closeModal('security-modal');
+            closeModal('info-modal');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
