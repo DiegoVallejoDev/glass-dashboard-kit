@@ -20,19 +20,19 @@ const navGroups = [
   {
     label: "Monitor",
     items: [
-      { icon: Gauge, label: "Dashboard" },
-      { icon: Cpu, label: "Processes" },
-      { icon: LineChart, label: "Metrics" },
-      { icon: FileText, label: "Logs" },
+      { icon: Gauge, label: "Dashboard", sectionId: null as string | null },
+      { icon: Cpu, label: "Processes", sectionId: "processes" },
+      { icon: LineChart, label: "Metrics", sectionId: "metrics" },
+      { icon: FileText, label: "Logs", sectionId: "logs" },
     ],
   },
   {
     label: "System",
     items: [
-      { icon: Network, label: "Network" },
-      { icon: Server, label: "Nodes" },
-      { icon: Shield, label: "Security" },
-      { icon: Settings, label: "Settings" },
+      { icon: Network, label: "Network", sectionId: "status" },
+      { icon: Server, label: "Nodes", sectionId: "inventory" },
+      { icon: Shield, label: "Security", sectionId: "alerts" },
+      { icon: Settings, label: "Settings", sectionId: "forms" },
     ],
   },
 ];
@@ -42,9 +42,10 @@ interface SidebarProps {
   onClose: () => void;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
+  onNavigate?: (sectionId: string | null) => void;
 }
 
-export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange }: SidebarProps) {
+export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onNavigate }: SidebarProps) {
   const [active, setActive] = useState("Dashboard");
   const [profileOpen, setProfileOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -182,7 +183,11 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange }: S
                     collapsed && "md:justify-center"
                   )}
                   aria-current={active === item.label ? "page" : "false"}
-                  onClick={() => setActive(item.label)}
+                  onClick={() => {
+                    setActive(item.label);
+                    onNavigate?.(item.sectionId);
+                    onClose();
+                  }}
                   title={collapsed ? item.label : undefined}
                 >
                   <item.icon className="w-4 h-4 opacity-70 shrink-0" aria-hidden="true" />

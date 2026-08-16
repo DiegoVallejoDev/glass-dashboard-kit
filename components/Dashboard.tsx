@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
@@ -46,6 +46,21 @@ interface DashboardProps {
 export function Dashboard(props: DashboardProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  function scrollToSection(id: string | null) {
+    const main = mainRef.current;
+    if (!main) return;
+    if (!id) {
+      main.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const el = document.getElementById(id);
+    const header = main.querySelector("header");
+    if (!el) return;
+    const offset = (header?.clientHeight ?? 0);
+    main.scrollTo({ top: el.offsetTop - offset, behavior: "smooth" });
+  }
 
   return (
     <>
@@ -54,9 +69,16 @@ export function Dashboard(props: DashboardProps) {
       </a>
       <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-indigo-50 to-fuchsia-50" aria-hidden="true" />
       <div className="flex h-dvh w-full flex-col md:flex-row p-3 md:p-5 gap-3 md:gap-4 overflow-hidden">
-        <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} collapsed={collapsed} onCollapsedChange={setCollapsed} />
+        <Sidebar
+          mobileOpen={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+          onNavigate={scrollToSection}
+        />
 
         <main
+          ref={mainRef}
           id="main-content"
           className={cn(
             "flex-1 flex flex-col min-h-0 gap-3 md:gap-4 overflow-y-auto",
@@ -66,25 +88,25 @@ export function Dashboard(props: DashboardProps) {
         >
           <Header onMenuClick={() => setMobileOpen(true)} />
 
-          <section className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
+          <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
             {props.metrics.map((m) => (
               <MetricCard key={m.label} metric={m} />
             ))}
           </section>
 
-          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 md:gap-4">
+          <div id="processes" className="flex flex-col lg:flex-row gap-3 md:gap-4 min-h-80">
             <ProcessSection processes={props.processes} />
             <HardwarePanel thermal={props.thermal} />
           </div>
 
-          <DiskAndServices disks={props.disks} topServices={props.topServices} />
-          <ChartsSection />
-          <TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} />
-          <StatusControls controls={props.controls} />
-          <PipelineInventory inventory={props.inventory} />
-          <MediaGallery />
-          <FormsSection />
-          <AlertsFeed alerts={props.alerts} />
+          <div id="services"><DiskAndServices disks={props.disks} topServices={props.topServices} /></div>
+          <div id="charts"><ChartsSection /></div>
+          <div id="logs"><TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} /></div>
+          <div id="status"><StatusControls controls={props.controls} /></div>
+          <div id="inventory"><PipelineInventory inventory={props.inventory} /></div>
+          <div id="gallery"><MediaGallery /></div>
+          <div id="forms"><FormsSection /></div>
+          <div id="alerts"><AlertsFeed alerts={props.alerts} /></div>
         </main>
       </div>
     </>
