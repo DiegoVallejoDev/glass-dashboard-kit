@@ -185,12 +185,7 @@ header#top-header.header-condensed #clock {
   }
 
   header#top-header.header-condensed .header-search {
-    flex: none;
-    min-width: 0;
-  }
-
-  header#top-header.header-condensed .header-search input {
-    width: min(60vw, 11rem);
+    max-width: 11rem;
   }
 }
 

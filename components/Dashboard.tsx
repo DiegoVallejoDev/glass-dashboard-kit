@@ -81,32 +81,34 @@ export function Dashboard(props: DashboardProps) {
           ref={mainRef}
           id="main-content"
           className={cn(
-            "flex-1 flex flex-col min-h-0 gap-3 md:gap-4 overflow-y-auto",
-            collapsed ? "md:ml-[calc(5rem+2.25rem)]" : "md:ml-[calc(16rem+2.25rem)]"
+            "flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-3 md:px-4 pb-3 md:pb-4 gap-3 md:gap-4",
+            collapsed ? "md:ml-[calc(5rem+1.25rem)]" : "md:ml-[calc(16rem+1.25rem)]"
           )}
           tabIndex={-1}
         >
           <Header onMenuClick={() => setMobileOpen(true)} />
 
-          <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
-            {props.metrics.map((m) => (
-              <MetricCard key={m.label} metric={m} />
-            ))}
-          </section>
+          <div className="flex flex-col min-h-0 gap-3 md:gap-4">
+            <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
+              {props.metrics.map((m) => (
+                <MetricCard key={m.label} metric={m} />
+              ))}
+            </section>
 
-          <div id="processes" className="flex flex-col lg:flex-row gap-3 md:gap-4 min-h-80">
-            <ProcessSection processes={props.processes} />
-            <HardwarePanel thermal={props.thermal} />
+            <div id="processes" className="flex flex-col lg:flex-row gap-3 md:gap-4 min-h-80">
+              <ProcessSection processes={props.processes} />
+              <HardwarePanel thermal={props.thermal} />
+            </div>
+
+            <div id="services"><DiskAndServices disks={props.disks} topServices={props.topServices} /></div>
+            <div id="charts"><ChartsSection /></div>
+            <div id="logs"><TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} /></div>
+            <div id="status"><StatusControls controls={props.controls} /></div>
+            <div id="inventory"><PipelineInventory inventory={props.inventory} /></div>
+            <div id="gallery"><MediaGallery /></div>
+            <div id="forms"><FormsSection /></div>
+            <div id="alerts"><AlertsFeed alerts={props.alerts} /></div>
           </div>
-
-          <div id="services"><DiskAndServices disks={props.disks} topServices={props.topServices} /></div>
-          <div id="charts"><ChartsSection /></div>
-          <div id="logs"><TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} /></div>
-          <div id="status"><StatusControls controls={props.controls} /></div>
-          <div id="inventory"><PipelineInventory inventory={props.inventory} /></div>
-          <div id="gallery"><MediaGallery /></div>
-          <div id="forms"><FormsSection /></div>
-          <div id="alerts"><AlertsFeed alerts={props.alerts} /></div>
         </main>
       </div>
     </>
