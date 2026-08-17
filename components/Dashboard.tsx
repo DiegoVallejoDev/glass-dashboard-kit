@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Sidebar } from "@/components/Sidebar";
+import { navGroups, Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/MetricCard";
 import {
@@ -43,12 +43,62 @@ interface DashboardProps {
   alerts: Alert[];
 }
 
+function labelForSection(id: string | null) {
+  for (const group of navGroups) {
+    for (const item of group.items) {
+      if (item.sectionId === id) return item.label;
+    }
+  }
+  return "Dashboard";
+}
+
 export function Dashboard(props: DashboardProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [activeNav, setActiveNav] = useState("Dashboard");
   const mainRef = useRef<HTMLElement>(null);
 
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    function onScroll() {
+      if (!main) return;
+      const header = main.querySelector("header");
+      const offset = (header?.clientHeight ?? 64) + 8;
+      const scrollPos = main.scrollTop + offset;
+      const candidates: { label: string; top: number }[] = [];
+      for (const group of navGroups) {
+        for (const item of group.items) {
+          const id = item.sectionId;
+          if (!id) continue;
+          const el = document.getElementById(id);
+          if (el) candidates.push({ label: item.label, top: el.offsetTop });
+        }
+      }
+      if (candidates.length === 0) return;
+      candidates.sort((a, b) => a.top - b.top);
+      if (scrollPos < candidates[0].top) {
+        setActiveNav("Dashboard");
+        return;
+      }
+      let activeLabel = candidates[0].label;
+      let bestDist = Math.abs(candidates[0].top - scrollPos);
+      for (let i = 1; i < candidates.length; i++) {
+        const dist = Math.abs(candidates[i].top - scrollPos);
+        if (dist < bestDist) {
+          bestDist = dist;
+          activeLabel = candidates[i].label;
+        }
+      }
+      setActiveNav(activeLabel);
+    }
+    main.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => main.removeEventListener("scroll", onScroll);
+  }, []);
+
   function scrollToSection(id: string | null) {
+    setActiveNav(labelForSection(id));
     const main = mainRef.current;
     if (!main) return;
     if (!id) {
@@ -75,13 +125,14 @@ export function Dashboard(props: DashboardProps) {
           collapsed={collapsed}
           onCollapsedChange={setCollapsed}
           onNavigate={scrollToSection}
+          activeItem={activeNav}
         />
 
         <main
           ref={mainRef}
           id="main-content"
           className={cn(
-            "flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-3 md:px-4 pb-3 md:pb-4 gap-3 md:gap-4",
+            "relative flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-3 md:px-4 pb-3 md:pb-4 gap-3 md:gap-4",
             collapsed ? "md:ml-[calc(5rem+1.25rem)]" : "md:ml-[calc(16rem+1.25rem)]"
           )}
           tabIndex={-1}

@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 
-const navGroups = [
+export const navGroups = [
   {
     label: "Monitor",
     items: [
@@ -43,10 +43,10 @@ interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onNavigate?: (sectionId: string | null) => void;
+  activeItem?: string;
 }
 
-export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onNavigate }: SidebarProps) {
-  const [active, setActive] = useState("Dashboard");
+export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onNavigate, activeItem = "Dashboard" }: SidebarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -179,12 +179,11 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onN
                   type="button"
                   className={cn(
                     "nav-link w-full flex items-center gap-2 px-2 py-2 text-xs font-medium rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] transition-colors text-slate-600",
-                    active === item.label && "bg-blue-50 text-blue-700",
+                    activeItem === item.label && "bg-blue-50 text-blue-700",
                     collapsed && "md:justify-center"
                   )}
-                  aria-current={active === item.label ? "page" : "false"}
+                  aria-current={activeItem === item.label ? "page" : "false"}
                   onClick={() => {
-                    setActive(item.label);
                     onNavigate?.(item.sectionId);
                     onClose();
                   }}
