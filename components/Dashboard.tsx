@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { navGroups, Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/MetricCard";
+import { SectionHeader } from "@/components/SectionHeader";
 import {
   AlertsFeed,
   ChartsSection,
@@ -140,25 +141,53 @@ export function Dashboard(props: DashboardProps) {
           <Header mobileOpen={mobileOpen} onMenuClick={() => setMobileOpen(true)} />
 
           <div className="flex flex-col min-h-0 gap-3 md:gap-4">
-            <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
+            <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-labelledby="metrics-heading">
+              <SectionHeader title="Metrics" id="metrics-heading" className="col-span-full" />
               {props.metrics.map((m) => (
                 <MetricCard key={m.label} metric={m} />
               ))}
             </section>
 
-            <div id="processes" className="flex flex-col lg:flex-row gap-3 md:gap-4 min-h-80">
-              <ProcessSection processes={props.processes} />
-              <HardwarePanel thermal={props.thermal} />
+            <div id="processes" className="flex flex-col gap-3 md:gap-4 min-h-80" aria-labelledby="processes-heading">
+              <SectionHeader title="Processes" id="processes-heading" />
+              <div className="flex flex-col lg:flex-row gap-3 md:gap-4 min-h-0 flex-1">
+                <ProcessSection processes={props.processes} />
+                <HardwarePanel thermal={props.thermal} />
+              </div>
             </div>
 
-            <div id="services"><DiskAndServices disks={props.disks} topServices={props.topServices} /></div>
-            <div id="charts"><ChartsSection /></div>
-            <div id="logs"><TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} /></div>
-            <div id="status"><StatusControls controls={props.controls} /></div>
-            <div id="inventory"><PipelineInventory inventory={props.inventory} /></div>
-            <div id="gallery"><MediaGallery /></div>
-            <div id="forms"><FormsSection /></div>
-            <div id="alerts"><AlertsFeed alerts={props.alerts} /></div>
+            <div id="services" aria-labelledby="services-heading">
+              <SectionHeader title="Services" id="services-heading" />
+              <DiskAndServices disks={props.disks} topServices={props.topServices} />
+            </div>
+            <div id="charts" aria-labelledby="charts-heading">
+              <SectionHeader title="Charts" id="charts-heading" />
+              <ChartsSection />
+            </div>
+            <div id="logs" aria-labelledby="logs-heading">
+              <SectionHeader title="Logs & Activity" id="logs-heading" />
+              <TeamAndActivity team={props.team} tasks={props.tasks} logs={props.logs} />
+            </div>
+            <div id="status" aria-labelledby="status-heading">
+              <SectionHeader title="Network Status" id="status-heading" />
+              <StatusControls controls={props.controls} />
+            </div>
+            <div id="inventory" aria-labelledby="inventory-heading">
+              <SectionHeader title="Nodes & Inventory" id="inventory-heading" />
+              <PipelineInventory inventory={props.inventory} />
+            </div>
+            <div id="gallery" aria-labelledby="gallery-heading">
+              <SectionHeader title="Media Gallery" id="gallery-heading" />
+              <MediaGallery />
+            </div>
+            <div id="forms" aria-labelledby="forms-heading">
+              <SectionHeader title="Settings" id="forms-heading" />
+              <FormsSection />
+            </div>
+            <div id="alerts" aria-labelledby="alerts-heading">
+              <SectionHeader title="Security Alerts" id="alerts-heading" />
+              <AlertsFeed alerts={props.alerts} />
+            </div>
           </div>
         </main>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { noise } from "@/lib/noise";
 import type {
   Alert,
   Control,
@@ -302,14 +303,21 @@ export function DiskAndServices({ disks, topServices }: DiskUsageProps) {
 /* Charts                                                                     */
 /* -------------------------------------------------------------------------- */
 
+interface ChartHandle {
+  destroy: () => void;
+  update: () => void;
+  data: { datasets: Array<{ data: number[] }> };
+}
+
 export function ChartsSection() {
   const cpuRef = useRef<HTMLCanvasElement>(null);
   const reqRef = useRef<HTMLCanvasElement>(null);
   const breakdownRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const charts: Array<{ destroy: () => void }> = [];
     let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const charts: ChartHandle[] = [];
 
     async function render() {
       const { default: Chart } = await import("chart.js/auto");
@@ -320,7 +328,22 @@ export function ChartsSection() {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: { x: { display: false }, y: { display: false } },
+        animation: { duration: 900, easing: "easeOutQuart" as const },
       };
+
+      function cpuData(time: number) {
+        return Array.from({ length: 6 }, (_, i) => noise(42, 4, time + i * 0.4));
+      }
+      function reqData(time: number) {
+        return Array.from({ length: 6 }, (_, i) => noise(55, 25, time * 1.2 + i * 0.6));
+      }
+      function breakdownData(time: number) {
+        const bases = [55, 25, 12, 8];
+        const mults = [10, 8, 4, 4];
+        const values = bases.map((base, i) => noise(base, mults[i], time * 0.5 + i));
+        const total = values.reduce((a, b) => a + b, 0);
+        return values.map((v) => (v / total) * 100);
+      }
 
       if (cpuRef.current) {
         charts.push(
@@ -330,7 +353,7 @@ export function ChartsSection() {
               labels: ["00", "04", "08", "12", "16", "20"],
               datasets: [
                 {
-                  data: [28, 35, 42, 38, 48, 44],
+                  data: cpuData(Date.now() / 4000),
                   borderColor: "#3b82f6",
                   backgroundColor: "rgba(59,130,246,0.15)",
                   fill: true,
@@ -340,7 +363,7 @@ export function ChartsSection() {
               ],
             },
             options: commonOptions,
-          })
+          }) as ChartHandle
         );
       }
       if (reqRef.current) {
@@ -351,14 +374,14 @@ export function ChartsSection() {
               labels: ["A", "B", "C", "D", "E", "F"],
               datasets: [
                 {
-                  data: [45, 62, 38, 74, 56, 68],
+                  data: reqData(Date.now() / 4000),
                   backgroundColor: ["#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#10b981", "#6366f1"],
                   borderRadius: 4,
                 },
               ],
             },
             options: commonOptions,
-          })
+          }) as ChartHandle
         );
       }
       if (breakdownRef.current) {
@@ -369,7 +392,7 @@ export function ChartsSection() {
               labels: ["Idle", "User", "Sys", "IO"],
               datasets: [
                 {
-                  data: [55, 25, 12, 8],
+                  data: breakdownData(Date.now() / 4000),
                   backgroundColor: ["#e2e8f0", "#3b82f6", "#8b5cf6", "#f59e0b"],
                   borderWidth: 0,
                 },
@@ -380,15 +403,25 @@ export function ChartsSection() {
               maintainAspectRatio: false,
               cutout: "70%",
               plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } },
+              animation: { duration: 900, easing: "easeOutQuart" as const },
             },
-          })
+          }) as ChartHandle
         );
       }
+
+      interval = setInterval(() => {
+        const t = Date.now() / 4000;
+        if (charts[0]) charts[0].data.datasets[0].data = cpuData(t);
+        if (charts[1]) charts[1].data.datasets[0].data = reqData(t);
+        if (charts[2]) charts[2].data.datasets[0].data = breakdownData(t);
+        charts.forEach((c) => c.update());
+      }, 2000);
     }
 
     render();
     return () => {
       cancelled = true;
+      if (interval) clearInterval(interval);
       charts.forEach((c) => c.destroy());
     };
   }, []);
@@ -400,7 +433,7 @@ export function ChartsSection() {
   ];
 
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4">
       {cards.map((c) => (
         <div key={c.title} className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-2">
           <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{c.title}</h3>
@@ -409,7 +442,7 @@ export function ChartsSection() {
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
