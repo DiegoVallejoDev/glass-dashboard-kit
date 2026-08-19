@@ -178,12 +178,13 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
           Hardware Toggles
         </h3>
         <div className="flex flex-col gap-2">
-          <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
+          <label htmlFor="turbo-boost-switch" className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
               <Zap className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Turbo Boost
             </span>
             <button
+              id="turbo-boost-switch"
               type="button"
               role="switch"
               aria-label="Turbo Boost"
@@ -202,12 +203,13 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
               />
             </button>
           </label>
-          <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
+          <label htmlFor="deep-sleep-switch" className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
               <Moon className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Deep Sleep
             </span>
             <button
+              id="deep-sleep-switch"
               type="button"
               role="switch"
               aria-label="Deep Sleep"
@@ -500,7 +502,8 @@ export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
 
       <div className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-1 lg:col-span-1">
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pending Tasks</h3>
-        <ul className="flex flex-col gap-1.5 overflow-auto max-h-60">
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable region must be focusable */}
+        <ul tabIndex={0} aria-label="Pending tasks" className="flex flex-col gap-1.5 overflow-auto max-h-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
           {tasks.map((t) => (
             <li
               key={t.id}
@@ -522,7 +525,8 @@ export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
 
       <div className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-1 lg:col-span-1">
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">System Logs</h3>
-        <ul className="flex flex-col gap-1.5 overflow-auto max-h-60">
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable region must be focusable */}
+        <ul tabIndex={0} aria-label="System logs" className="flex flex-col gap-1.5 overflow-auto max-h-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
           {logs.map((l) => (
             <li key={l.id} className="p-1.5 rounded-lg bg-white/40 text-[11px] text-slate-700">
               <div className="font-medium truncate">{l.title}</div>
@@ -703,28 +707,28 @@ export function FormsSection() {
   return (
     <section className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
       <form onSubmit={onIncident} className="glass-card p-4 flex flex-col gap-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Report Incident</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Report Incident</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Name
-            <input required type="text" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input required type="text" placeholder="e.g. Jane Doe" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Email
-            <input required type="email" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input required type="email" placeholder="ops@example.com" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Severity
-            <select className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <select className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
               <option>Low</option>
               <option>Medium</option>
               <option>High</option>
               <option>Critical</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Description
-            <textarea rows={3} className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <textarea rows={3} placeholder="Briefly describe the incident..." className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
         </div>
         <button
@@ -737,26 +741,26 @@ export function FormsSection() {
       </form>
 
       <form onSubmit={onConfig} className="glass-card p-4 flex flex-col gap-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Node Config</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Node Config</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Node ID
-            <input defaultValue="0x4A" type="text" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input defaultValue="0x4A" type="text" placeholder="0x4A" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs font-mono text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Region
-            <select className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <select className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
               <option>us-east-1</option>
               <option>eu-west-1</option>
               <option>ap-south-1</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Tags
-            <input type="text" placeholder="production, api, cache" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="text" placeholder="production, api, cache" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex items-center gap-2 text-[11px] text-slate-600 sm:col-span-2">
-            <input type="checkbox" defaultChecked className="rounded border-slate-300 text-blue-500 focus:ring-blue-500" />
+          <label className="flex items-center gap-2 text-[11px] text-slate-700 sm:col-span-2">
+            <input type="checkbox" defaultChecked className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
             Enable telemetry streaming
           </label>
         </div>
