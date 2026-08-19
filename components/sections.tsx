@@ -86,10 +86,10 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
   return (
     <section
       className="flex-1 min-h-0 flex flex-col glass-card overflow-hidden"
-      aria-labelledby="processes-heading"
+      aria-labelledby="active-processes-heading"
     >
       <div className="px-3 py-2 border-b border-white/50 bg-white/40 flex justify-between items-center">
-        <h2 id="processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <h2 id="active-processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
           Active Processes
         </h2>
         <span className="text-[10px] font-mono bg-white/50 px-1.5 py-0.5 rounded text-slate-500">
@@ -186,6 +186,7 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
             <button
               type="button"
               role="switch"
+              aria-label="Turbo Boost"
               aria-checked={toggles.turbo}
               className={cn(
                 "w-8 h-4 rounded-full relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
@@ -209,6 +210,7 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
             <button
               type="button"
               role="switch"
+              aria-label="Deep Sleep"
               aria-checked={toggles.sleep}
               className={cn(
                 "w-8 h-4 rounded-full relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
