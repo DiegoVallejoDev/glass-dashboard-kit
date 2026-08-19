@@ -88,7 +88,7 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
       className="flex-1 min-h-0 flex flex-col glass-card overflow-hidden"
       aria-labelledby="active-processes-heading"
     >
-      <div className="px-3 py-2 border-b border-white/50 bg-white/40 flex justify-between items-center">
+      <div className="px-3 py-2 border-b border-white/20 bg-white/40 flex justify-between items-center">
         <h2 id="active-processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
           Active Processes
         </h2>
@@ -336,15 +336,15 @@ export function ChartsSection() {
       };
 
       function cpuData(time: number) {
-        return Array.from({ length: 6 }, (_, i) => noise(42, 4, time + i * 0.4));
+        return Array.from({ length: 6 }, (_, i) => noise(42, 3, time * 0.3 + i * 0.4));
       }
       function reqData(time: number) {
-        return Array.from({ length: 6 }, (_, i) => noise(55, 25, time * 1.2 + i * 0.6));
+        return Array.from({ length: 6 }, (_, i) => noise(55, 12, time * 0.3 + i * 0.4));
       }
       function breakdownData(time: number) {
         const bases = [55, 25, 12, 8];
-        const mults = [10, 8, 4, 4];
-        const values = bases.map((base, i) => noise(base, mults[i], time * 0.5 + i));
+        const mults = [6, 4, 3, 2];
+        const values = bases.map((base, i) => noise(base, mults[i], time * 0.2 + i));
         const total = values.reduce((a, b) => a + b, 0);
         return values.map((v) => (v / total) * 100);
       }
@@ -357,7 +357,7 @@ export function ChartsSection() {
               labels: ["00", "04", "08", "12", "16", "20"],
               datasets: [
                 {
-                  data: cpuData(Date.now() / 4000),
+                  data: cpuData(Date.now() / 10000),
                   borderColor: "#3b82f6",
                   backgroundColor: "rgba(59,130,246,0.15)",
                   fill: true,
@@ -378,7 +378,7 @@ export function ChartsSection() {
               labels: ["A", "B", "C", "D", "E", "F"],
               datasets: [
                 {
-                  data: reqData(Date.now() / 4000),
+                  data: reqData(Date.now() / 10000),
                   backgroundColor: ["#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#10b981", "#6366f1"],
                   borderRadius: 4,
                 },
@@ -396,7 +396,7 @@ export function ChartsSection() {
               labels: ["Idle", "User", "Sys", "IO"],
               datasets: [
                 {
-                  data: breakdownData(Date.now() / 4000),
+                  data: breakdownData(Date.now() / 10000),
                   backgroundColor: ["#e2e8f0", "#3b82f6", "#8b5cf6", "#f59e0b"],
                   borderWidth: 0,
                 },
@@ -414,12 +414,12 @@ export function ChartsSection() {
       }
 
       interval = setInterval(() => {
-        const t = Date.now() / 4000;
+        const t = Date.now() / 10000;
         if (charts[0]) charts[0].data.datasets[0].data = cpuData(t);
         if (charts[1]) charts[1].data.datasets[0].data = reqData(t);
         if (charts[2]) charts[2].data.datasets[0].data = breakdownData(t);
         charts.forEach((c) => c.update());
-      }, 2000);
+      }, 3000);
     }
 
     render();
