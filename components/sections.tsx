@@ -111,7 +111,7 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
                     onClick={() => toggleSort(k)}
                   >
                     {k}
-                    {sort.key === k && <ChevronRight className={cn("w-3 h-3 transition-transform", sort.dir === "desc" && "rotate-90")} />}
+                    {sort.key === k && <ChevronRight className={cn("w-3 h-3 transition-transform", sort.dir === "desc" && "rotate-90")} aria-hidden="true" />}
                   </button>
                 </th>
               ))}
@@ -179,7 +179,7 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
         <div className="flex flex-col gap-2">
           <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 opacity-70" />
+              <Zap className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Turbo Boost
             </span>
             <button
@@ -202,7 +202,7 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
           </label>
           <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
-              <Moon className="w-3.5 h-3.5 opacity-70" />
+              <Moon className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Deep Sleep
             </span>
             <button
@@ -425,9 +425,9 @@ interface TeamAndActivityProps {
 
 export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
   function statusDot(status: TeamMember["status"]) {
-    if (status === "online") return <span className="w-2 h-2 rounded-full bg-emerald-500" />;
-    if (status === "away") return <span className="w-2 h-2 rounded-full bg-amber-500" />;
-    return <span className="w-2 h-2 rounded-full bg-slate-400" />;
+    const color =
+      status === "online" ? "bg-emerald-500" : status === "away" ? "bg-amber-500" : "bg-slate-400";
+    return <span className={cn("w-2 h-2 rounded-full", color)} aria-label={`Status: ${status}`} role="img" />;
   }
 
   return (
@@ -513,17 +513,17 @@ interface StatusControlsProps {
 
 function controlIcon(label: string) {
   const icons: Record<string, React.ReactNode> = {
-    "API Gateway": <Network className="w-4 h-4" />,
-    "Auth Service": <Lock className="w-4 h-4" />,
-    "Queue Worker": <Clock className="w-4 h-4" />,
-    "Search Index": <Database className="w-4 h-4" />,
-    "Object Store": <Cloud className="w-4 h-4" />,
-    Notification: <AlertTriangle className="w-4 h-4" />,
-    "Cache Cluster": <MemoryStick className="w-4 h-4" />,
-    Logging: <FileText className="w-4 h-4" />,
-    "Metrics DB": <Activity className="w-4 h-4" />,
+    "API Gateway": <Network className="w-4 h-4" aria-hidden="true" />,
+    "Auth Service": <Lock className="w-4 h-4" aria-hidden="true" />,
+    "Queue Worker": <Clock className="w-4 h-4" aria-hidden="true" />,
+    "Search Index": <Database className="w-4 h-4" aria-hidden="true" />,
+    "Object Store": <Cloud className="w-4 h-4" aria-hidden="true" />,
+    Notification: <AlertTriangle className="w-4 h-4" aria-hidden="true" />,
+    "Cache Cluster": <MemoryStick className="w-4 h-4" aria-hidden="true" />,
+    Logging: <FileText className="w-4 h-4" aria-hidden="true" />,
+    "Metrics DB": <Activity className="w-4 h-4" aria-hidden="true" />,
   };
-  return icons[label] ?? <Server className="w-4 h-4" />;
+  return icons[label] ?? <Server className="w-4 h-4" aria-hidden="true" />;
 }
 
 export function StatusControls({ controls }: StatusControlsProps) {
@@ -589,7 +589,7 @@ export function PipelineInventory({ inventory }: PipelineInventoryProps) {
                 {s.status === "passed" ? <Check className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
                 {s.stage}
               </div>
-              {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+              {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
             </div>
           ))}
         </div>
@@ -632,7 +632,7 @@ export function MediaGallery() {
         >
           <Image
             src={src}
-            alt={`Telemetry asset ${i + 1}`}
+            alt=""
             width={400}
             height={220}
             className="w-full h-auto object-cover"
@@ -698,7 +698,7 @@ export function FormsSection() {
         >
           Submit Incident
         </button>
-        {incidentMsg && <p className="text-[11px] text-emerald-600">{incidentMsg}</p>}
+        {incidentMsg && <p className="text-[11px] text-emerald-600" aria-live="polite" aria-atomic="true">{incidentMsg}</p>}
       </form>
 
       <form onSubmit={onConfig} className="glass-card p-4 flex flex-col gap-3">
@@ -731,7 +731,7 @@ export function FormsSection() {
         >
           Save Config
         </button>
-        {configMsg && <p className="text-[11px] text-emerald-600">{configMsg}</p>}
+        {configMsg && <p className="text-[11px] text-emerald-600" aria-live="polite" aria-atomic="true">{configMsg}</p>}
       </form>
     </section>
   );
@@ -746,9 +746,9 @@ interface AlertsFeedProps {
 }
 
 function alertIcon(level: Alert["level"]) {
-  if (level === "critical") return <AlertCircle className="w-4 h-4 text-red-500" />;
-  if (level === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-  return <Info className="w-4 h-4 text-blue-500" />;
+  if (level === "critical") return <AlertCircle className="w-4 h-4 text-red-500" aria-hidden="true" />;
+  if (level === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />;
+  return <Info className="w-4 h-4 text-blue-500" aria-hidden="true" />;
 }
 
 export function AlertsFeed({ alerts }: AlertsFeedProps) {

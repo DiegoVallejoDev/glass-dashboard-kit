@@ -6,9 +6,10 @@ import { Menu, Search } from "lucide-react";
 
 interface HeaderProps {
   onMenuClick: () => void;
+  mobileOpen?: boolean;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, mobileOpen = false }: HeaderProps) {
   const [condensed, setCondensed] = useState(false);
   const [active, setActive] = useState(false);
   const [time, setTime] = useState("--:--:--");
@@ -68,7 +69,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           type="button"
           className="md:hidden p-1.5 rounded-md hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Open navigation"
-          aria-expanded={false}
+          aria-expanded={mobileOpen}
+          aria-controls="primary-sidebar"
           onClick={onMenuClick}
         >
           <Menu className="w-4 h-4 text-slate-600" />

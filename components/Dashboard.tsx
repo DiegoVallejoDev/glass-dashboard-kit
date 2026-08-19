@@ -137,7 +137,7 @@ export function Dashboard(props: DashboardProps) {
           )}
           tabIndex={-1}
         >
-          <Header onMenuClick={() => setMobileOpen(true)} />
+          <Header mobileOpen={mobileOpen} onMenuClick={() => setMobileOpen(true)} />
 
           <div className="flex flex-col min-h-0 gap-3 md:gap-4">
             <section id="metrics" className="grid grid-cols-2 md:grid-cols-4 min-[1920px]:grid-cols-6 gap-3 md:gap-4" aria-label="Key metrics">
