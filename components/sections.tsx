@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { noise } from "@/lib/noise";
 import type {
   Alert,
   Control,
@@ -85,12 +86,12 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
   return (
     <section
       className="flex-1 min-h-0 flex flex-col glass-card overflow-hidden"
-      aria-labelledby="processes-heading"
+      aria-labelledby="active-processes-heading"
     >
-      <div className="px-3 py-2 border-b border-white/50 bg-white/40 flex justify-between items-center">
-        <h2 id="processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+      <div className="px-3 py-2 border-b border-white/20 bg-white/40 flex justify-between items-center">
+        <h3 id="active-processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
           Active Processes
-        </h2>
+        </h3>
         <span className="text-[10px] font-mono bg-white/50 px-1.5 py-0.5 rounded text-slate-500">
           n={processes.length}
         </span>
@@ -111,7 +112,7 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
                     onClick={() => toggleSort(k)}
                   >
                     {k}
-                    {sort.key === k && <ChevronRight className={cn("w-3 h-3 transition-transform", sort.dir === "desc" && "rotate-90")} />}
+                    {sort.key === k && <ChevronRight className={cn("w-3 h-3 transition-transform", sort.dir === "desc" && "rotate-90")} aria-hidden="true" />}
                   </button>
                 </th>
               ))}
@@ -177,14 +178,16 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
           Hardware Toggles
         </h3>
         <div className="flex flex-col gap-2">
-          <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
+          <label htmlFor="turbo-boost-switch" className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 opacity-70" />
+              <Zap className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Turbo Boost
             </span>
             <button
+              id="turbo-boost-switch"
               type="button"
               role="switch"
+              aria-label="Turbo Boost"
               aria-checked={toggles.turbo}
               className={cn(
                 "w-8 h-4 rounded-full relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
@@ -200,14 +203,16 @@ export function HardwarePanel({ thermal }: HardwarePanelProps) {
               />
             </button>
           </label>
-          <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
+          <label htmlFor="deep-sleep-switch" className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/50 cursor-pointer group">
             <span className="text-xs font-medium text-slate-700 flex items-center gap-2">
-              <Moon className="w-3.5 h-3.5 opacity-70" />
+              <Moon className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
               Deep Sleep
             </span>
             <button
+              id="deep-sleep-switch"
               type="button"
               role="switch"
+              aria-label="Deep Sleep"
               aria-checked={toggles.sleep}
               className={cn(
                 "w-8 h-4 rounded-full relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
@@ -302,14 +307,21 @@ export function DiskAndServices({ disks, topServices }: DiskUsageProps) {
 /* Charts                                                                     */
 /* -------------------------------------------------------------------------- */
 
+interface ChartHandle {
+  destroy: () => void;
+  update: () => void;
+  data: { datasets: Array<{ data: number[] }> };
+}
+
 export function ChartsSection() {
   const cpuRef = useRef<HTMLCanvasElement>(null);
   const reqRef = useRef<HTMLCanvasElement>(null);
   const breakdownRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const charts: Array<{ destroy: () => void }> = [];
     let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const charts: ChartHandle[] = [];
 
     async function render() {
       const { default: Chart } = await import("chart.js/auto");
@@ -320,7 +332,24 @@ export function ChartsSection() {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: { x: { display: false }, y: { display: false } },
+        animation: { duration: 900, easing: "easeOutQuart" as const },
       };
+
+      function cpuData(time: number) {
+        return Array.from({ length: 6 }, (_, i) => noise(42, 3, time * 0.3 + i * 0.4));
+      }
+      function reqData(time: number) {
+        return Array.from({ length: 6 }, (_, i) => noise(55, 12, time * 0.3 + i * 0.4));
+      }
+      function breakdownData(time: number) {
+        const bases = [55, 25, 12, 8];
+        const scales = [0.7, 1.1, 1.5, 1.9];
+        const values = bases.map((base, i) =>
+          noise(base, base * 0.4, time * scales[i] + i * 0.9)
+        );
+        const total = values.reduce((a, b) => a + b, 0);
+        return values.map((v) => (v / total) * 100);
+      }
 
       if (cpuRef.current) {
         charts.push(
@@ -330,7 +359,7 @@ export function ChartsSection() {
               labels: ["00", "04", "08", "12", "16", "20"],
               datasets: [
                 {
-                  data: [28, 35, 42, 38, 48, 44],
+                  data: cpuData(Date.now() / 10000),
                   borderColor: "#3b82f6",
                   backgroundColor: "rgba(59,130,246,0.15)",
                   fill: true,
@@ -340,7 +369,7 @@ export function ChartsSection() {
               ],
             },
             options: commonOptions,
-          })
+          }) as ChartHandle
         );
       }
       if (reqRef.current) {
@@ -351,14 +380,14 @@ export function ChartsSection() {
               labels: ["A", "B", "C", "D", "E", "F"],
               datasets: [
                 {
-                  data: [45, 62, 38, 74, 56, 68],
+                  data: reqData(Date.now() / 10000),
                   backgroundColor: ["#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#10b981", "#6366f1"],
                   borderRadius: 4,
                 },
               ],
             },
             options: commonOptions,
-          })
+          }) as ChartHandle
         );
       }
       if (breakdownRef.current) {
@@ -369,7 +398,7 @@ export function ChartsSection() {
               labels: ["Idle", "User", "Sys", "IO"],
               datasets: [
                 {
-                  data: [55, 25, 12, 8],
+                  data: breakdownData(Date.now() / 10000),
                   backgroundColor: ["#e2e8f0", "#3b82f6", "#8b5cf6", "#f59e0b"],
                   borderWidth: 0,
                 },
@@ -380,15 +409,25 @@ export function ChartsSection() {
               maintainAspectRatio: false,
               cutout: "70%",
               plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } },
+              animation: { duration: 900, easing: "easeOutQuart" as const },
             },
-          })
+          }) as ChartHandle
         );
       }
+
+      interval = setInterval(() => {
+        const t = Date.now() / 10000;
+        if (charts[0]) charts[0].data.datasets[0].data = cpuData(t);
+        if (charts[1]) charts[1].data.datasets[0].data = reqData(t);
+        if (charts[2]) charts[2].data.datasets[0].data = breakdownData(t);
+        charts.forEach((c) => c.update());
+      }, 3000);
     }
 
     render();
     return () => {
       cancelled = true;
+      if (interval) clearInterval(interval);
       charts.forEach((c) => c.destroy());
     };
   }, []);
@@ -400,7 +439,7 @@ export function ChartsSection() {
   ];
 
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 min-[1920px]:grid-cols-6 gap-3 md:gap-4">
       {cards.map((c) => (
         <div key={c.title} className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-2">
           <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{c.title}</h3>
@@ -409,7 +448,7 @@ export function ChartsSection() {
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -425,9 +464,9 @@ interface TeamAndActivityProps {
 
 export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
   function statusDot(status: TeamMember["status"]) {
-    if (status === "online") return <span className="w-2 h-2 rounded-full bg-emerald-500" />;
-    if (status === "away") return <span className="w-2 h-2 rounded-full bg-amber-500" />;
-    return <span className="w-2 h-2 rounded-full bg-slate-400" />;
+    const color =
+      status === "online" ? "bg-emerald-500" : status === "away" ? "bg-amber-500" : "bg-slate-400";
+    return <span className={cn("w-2 h-2 rounded-full", color)} aria-label={`Status: ${status}`} role="img" />;
   }
 
   return (
@@ -465,7 +504,8 @@ export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
 
       <div className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-1 lg:col-span-1">
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pending Tasks</h3>
-        <ul className="flex flex-col gap-1.5 overflow-auto max-h-60">
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable region must be focusable */}
+        <ul tabIndex={0} aria-label="Pending tasks" className="flex flex-col gap-1.5 overflow-auto max-h-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
           {tasks.map((t) => (
             <li
               key={t.id}
@@ -487,7 +527,8 @@ export function TeamAndActivity({ team, tasks, logs }: TeamAndActivityProps) {
 
       <div className="glass-card p-3 flex flex-col gap-2 min-[1920px]:col-span-1 lg:col-span-1">
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">System Logs</h3>
-        <ul className="flex flex-col gap-1.5 overflow-auto max-h-60">
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable region must be focusable */}
+        <ul tabIndex={0} aria-label="System logs" className="flex flex-col gap-1.5 overflow-auto max-h-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
           {logs.map((l) => (
             <li key={l.id} className="p-1.5 rounded-lg bg-white/40 text-[11px] text-slate-700">
               <div className="font-medium truncate">{l.title}</div>
@@ -513,17 +554,17 @@ interface StatusControlsProps {
 
 function controlIcon(label: string) {
   const icons: Record<string, React.ReactNode> = {
-    "API Gateway": <Network className="w-4 h-4" />,
-    "Auth Service": <Lock className="w-4 h-4" />,
-    "Queue Worker": <Clock className="w-4 h-4" />,
-    "Search Index": <Database className="w-4 h-4" />,
-    "Object Store": <Cloud className="w-4 h-4" />,
-    Notification: <AlertTriangle className="w-4 h-4" />,
-    "Cache Cluster": <MemoryStick className="w-4 h-4" />,
-    Logging: <FileText className="w-4 h-4" />,
-    "Metrics DB": <Activity className="w-4 h-4" />,
+    "API Gateway": <Network className="w-4 h-4" aria-hidden="true" />,
+    "Auth Service": <Lock className="w-4 h-4" aria-hidden="true" />,
+    "Queue Worker": <Clock className="w-4 h-4" aria-hidden="true" />,
+    "Search Index": <Database className="w-4 h-4" aria-hidden="true" />,
+    "Object Store": <Cloud className="w-4 h-4" aria-hidden="true" />,
+    Notification: <AlertTriangle className="w-4 h-4" aria-hidden="true" />,
+    "Cache Cluster": <MemoryStick className="w-4 h-4" aria-hidden="true" />,
+    Logging: <FileText className="w-4 h-4" aria-hidden="true" />,
+    "Metrics DB": <Activity className="w-4 h-4" aria-hidden="true" />,
   };
-  return icons[label] ?? <Server className="w-4 h-4" />;
+  return icons[label] ?? <Server className="w-4 h-4" aria-hidden="true" />;
 }
 
 export function StatusControls({ controls }: StatusControlsProps) {
@@ -589,7 +630,7 @@ export function PipelineInventory({ inventory }: PipelineInventoryProps) {
                 {s.status === "passed" ? <Check className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
                 {s.stage}
               </div>
-              {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+              {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
             </div>
           ))}
         </div>
@@ -632,7 +673,7 @@ export function MediaGallery() {
         >
           <Image
             src={src}
-            alt={`Telemetry asset ${i + 1}`}
+            alt=""
             width={400}
             height={220}
             className="w-full h-auto object-cover"
@@ -668,28 +709,28 @@ export function FormsSection() {
   return (
     <section className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
       <form onSubmit={onIncident} className="glass-card p-4 flex flex-col gap-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Report Incident</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Report Incident</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Name
-            <input required type="text" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input required type="text" placeholder="e.g. Jane Doe" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Email
-            <input required type="email" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input required type="email" placeholder="ops@example.com" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Severity
-            <select className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <select className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
               <option>Low</option>
               <option>Medium</option>
               <option>High</option>
               <option>Critical</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Description
-            <textarea rows={3} className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <textarea rows={3} placeholder="Briefly describe the incident..." className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
         </div>
         <button
@@ -698,30 +739,30 @@ export function FormsSection() {
         >
           Submit Incident
         </button>
-        {incidentMsg && <p className="text-[11px] text-emerald-600">{incidentMsg}</p>}
+        {incidentMsg && <p className="text-[11px] text-emerald-600" aria-live="polite" aria-atomic="true">{incidentMsg}</p>}
       </form>
 
       <form onSubmit={onConfig} className="glass-card p-4 flex flex-col gap-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Node Config</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Node Config</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Node ID
-            <input defaultValue="0x4A" type="text" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input defaultValue="0x4A" type="text" placeholder="0x4A" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs font-mono text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700">
             Region
-            <select className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <select className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
               <option>us-east-1</option>
               <option>eu-west-1</option>
               <option>ap-south-1</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[11px] text-slate-600 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-[11px] text-slate-700 sm:col-span-2">
             Tags
-            <input type="text" placeholder="production, api, cache" className="px-2 py-1.5 rounded-lg bg-white/60 border border-white/80 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="text" placeholder="production, api, cache" className="px-2 py-1.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-700 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </label>
-          <label className="flex items-center gap-2 text-[11px] text-slate-600 sm:col-span-2">
-            <input type="checkbox" defaultChecked className="rounded border-slate-300 text-blue-500 focus:ring-blue-500" />
+          <label className="flex items-center gap-2 text-[11px] text-slate-700 sm:col-span-2">
+            <input type="checkbox" defaultChecked className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
             Enable telemetry streaming
           </label>
         </div>
@@ -731,7 +772,7 @@ export function FormsSection() {
         >
           Save Config
         </button>
-        {configMsg && <p className="text-[11px] text-emerald-600">{configMsg}</p>}
+        {configMsg && <p className="text-[11px] text-emerald-600" aria-live="polite" aria-atomic="true">{configMsg}</p>}
       </form>
     </section>
   );
@@ -746,9 +787,9 @@ interface AlertsFeedProps {
 }
 
 function alertIcon(level: Alert["level"]) {
-  if (level === "critical") return <AlertCircle className="w-4 h-4 text-red-500" />;
-  if (level === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-  return <Info className="w-4 h-4 text-blue-500" />;
+  if (level === "critical") return <AlertCircle className="w-4 h-4 text-red-500" aria-hidden="true" />;
+  if (level === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />;
+  return <Info className="w-4 h-4 text-blue-500" aria-hidden="true" />;
 }
 
 export function AlertsFeed({ alerts }: AlertsFeedProps) {

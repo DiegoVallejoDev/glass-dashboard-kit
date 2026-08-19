@@ -107,15 +107,15 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onN
       />
       <aside
         ref={sidebarRef}
+        id="primary-sidebar"
         className={cn(
           "fixed top-0 left-0 z-40 h-[100dvh] w-64 shrink-0 flex flex-col overflow-hidden border border-white/60 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/50 transition-all duration-200 ease-out md:fixed md:top-5 md:left-5 md:h-[calc(100dvh-2.5rem)] md:translate-x-0 md:rounded-2xl rounded-r-2xl rounded-l-none",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed && "md:w-20"
         )}
-        aria-label="Core network"
+        aria-label="Primary sidebar"
         role={mobileOpen ? "dialog" : undefined}
         aria-modal={mobileOpen ? "true" : undefined}
-        aria-hidden={mobileOpen ? undefined : "false"}
       >
         <div className="h-14 p-3 border-b border-white/50 bg-white/40 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
@@ -167,7 +167,7 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onN
             <div key={group.label} className="flex flex-col gap-1">
               <div
                 className={cn(
-                  "px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400",
+                  "px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500",
                   collapsed && "md:hidden"
                 )}
               >
@@ -182,7 +182,7 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onN
                     activeItem === item.label && "bg-blue-50 text-blue-700",
                     collapsed && "md:justify-center"
                   )}
-                  aria-current={activeItem === item.label ? "page" : "false"}
+                  aria-current={activeItem === item.label ? "page" : undefined}
                   onClick={() => {
                     onNavigate?.(item.sectionId);
                     onClose();
@@ -223,10 +223,10 @@ export function Sidebar({ mobileOpen, onClose, collapsed, onCollapsedChange, onN
             {profileOpen && (
               <div className="absolute bottom-full left-2 right-2 mb-1 p-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-white/60 shadow-lg flex flex-col gap-0.5">
                 <div className="px-2 py-1 text-[10px] text-slate-500">Status</div>
-                <button className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 text-slate-700">Online</button>
-                <button className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 text-slate-700">Away</button>
-                <button className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 text-slate-700">Settings</button>
-                <button className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 text-red-600">Logout</button>
+                <button type="button" className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 text-slate-700">Online</button>
+                <button type="button" className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 text-slate-700">Away</button>
+                <button type="button" className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 text-slate-700">Settings</button>
+                <button type="button" className="text-left px-2 py-1.5 text-xs rounded-md hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 text-red-600">Logout</button>
               </div>
             )}
           </div>
