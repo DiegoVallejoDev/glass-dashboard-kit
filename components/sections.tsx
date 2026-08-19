@@ -344,7 +344,7 @@ export function ChartsSection() {
       function breakdownData(time: number) {
         const bases = [55, 25, 12, 8];
         const mults = [6, 4, 3, 2];
-        const values = bases.map((base, i) => noise(base, mults[i], time * 0.2 + i));
+        const values = bases.map((base, i) => noise(base, mults[i], time * 0.6 + i * 0.7));
         const total = values.reduce((a, b) => a + b, 0);
         return values.map((v) => (v / total) * 100);
       }
