@@ -89,9 +89,9 @@ export function ProcessSection({ processes }: ProcessSectionProps) {
       aria-labelledby="active-processes-heading"
     >
       <div className="px-3 py-2 border-b border-white/20 bg-white/40 flex justify-between items-center">
-        <h2 id="active-processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <h3 id="active-processes-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
           Active Processes
-        </h2>
+        </h3>
         <span className="text-[10px] font-mono bg-white/50 px-1.5 py-0.5 rounded text-slate-500">
           n={processes.length}
         </span>
